@@ -2,7 +2,7 @@
 
 ### Turn any idea into production-ready software — with AI doing the heavy lifting at every step.
 
-CODE-SMITH is a collection of four AI prompts that work together as a complete system.
+CODE-SMITH is a collection of five AI prompts that work together as a complete system.
 You start with a rough idea. You end with clean, production-grade code.
 
 Each prompt handles one stage of building software. Use them in order, pass the output
@@ -18,24 +18,31 @@ of one into the next, and your AI assistant becomes a full development team.
 ```
 CODE-SMITH/
 │
-├── prd-generator/          ← STEP 1: Turn your idea into a detailed plan
-│   ├── prd-generator-pr... │  The prompt itself (copy this into your AI)
-│   ├── example.md          │  See a real example of what it produces
-│   └── how-to-use.md       │  Step-by-step usage guide
+├── prd-generator/           ← STEP 1: Turn your idea into a detailed plan
+│   ├── prd-generator-pr...  │  The prompt itself (copy this into your AI)
+│   ├── example.md           │  See a real example of what it produces
+│   └── how-to-use.md        │  Step-by-step usage guide
 │
-├── product-initialisation/ ← STEP 2: Turn your plan into a technical blueprint
-│   ├── master-prompt-...   │  The prompt itself
-│   └── example.md          │  See a real example of what it produces
+├── product-initialisation/  ← STEP 2: Turn your plan into a technical blueprint
+│   ├── master-prompt-...    │  The prompt itself
+│   ├── example.md           │  See a real example of what it produces
+│   └── how-to-use.md        │  Step-by-step usage guide
 │
-├── agent-workflows/        ← STEP 3: Manage every coding session
-│   ├── work-flows-gen...   │  The prompt itself
-│   └── how-to-use.md       │  Step-by-step usage guide
+├── feature-spec/            ← STEP 3: Write a precise contract for each feature
+│   ├── feature-spec-pr...   │  The prompt itself
+│   ├── example.md           │  See a real example of what it produces
+│   └── how-to-use.md        │  Step-by-step usage guide
 │
-├── code-evaluator/         ← STEP 4: Check your code before you ship
-│   ├── prodution-quality.. │  The prompt itself
-│   └── example.md          │  See a real example of what it produces
+├── agent-workflows/         ← STEP 4: Manage every coding session
+│   ├── work-flows-gen...    │  The prompt itself
+│   ├── how-to-use.md        │  Step-by-step usage guide
+│   └── example.md           │  See a real example of a full session
 │
-└── README.md               ← You are here
+├── code-evaluator/          ← STEP 5: Check your code before you ship
+│   ├── prodution-quality... │  The prompt itself
+│   └── example.md           │  See a real example of what it produces
+│
+└── README.md                ← You are here
 ```
 
 ---
@@ -44,285 +51,347 @@ CODE-SMITH/
 
 Think of building software like building a house.
 
-You wouldn't start laying bricks without a blueprint. And you wouldn't hand the
-blueprint to builders without a site manager keeping things on track.
-CODE-SMITH gives you all four stages — in the right order.
+You start with an idea. Then you write the plan. Then you draw the blueprint.
+Then you spec out each room in detail. Then you build, day by day.
+Before you hand over the keys, you do a final inspection.
+
+CODE-SMITH gives you a prompt for every one of those stages — in the right order.
 
 ```
-YOUR IDEA  ──────────────────────────────────────────►  SHIPPED PRODUCT
-    │                                                          ▲
-    │                                                          │
-    ▼                                                          │
-┌─────────────────┐                                           │
-│  STEP 1         │  "I want to build a scheduling app        │
-│  PRD Generator  │   for restaurants"                        │
-│                 │         ↓                                  │
-│  prd-generator/ │  Turns your rough idea into a             │
-│                 │  complete 16-section product document      │
-│                 │  with features, user flows, rules,         │
-│                 │  and requirements. No gaps.               │
-└────────┬────────┘                                           │
-         │ Outputs: PRD.md                                    │
-         ▼                                                    │
-┌─────────────────┐                                           │
-│  STEP 2         │  Takes your product document and          │
-│  Architect      │  designs the technical structure —         │
-│                 │  what tech to use, how files are          │
-│  product-       │  organised, how the database looks,        │
-│  initialisation/│  how everything connects.                 │
-│                 │                                           │
-│                 │  Also creates your SSOT — a single        │
-│                 │  reference sheet that locks your          │
-│                 │  tech choices for the whole project.      │
-└────────┬────────┘                                           │
-         │ Outputs: ARCHITECTURE.md (with SSOT)              │
-         ▼                                                    │
-┌─────────────────┐                                           │
-│  STEP 3         │  You use this every single coding day.    │
-│  Agent          │  Paste it at the start of every session   │
-│  Workflows      │  and your AI becomes:                     │
-│                 │   • A project manager tracking deadlines  │
-│  agent-         │   • An architect catching bad decisions   │
-│  workflows/     │   • A developer planning your tasks       │
-│                 │   • A QA engineer checking test coverage  │
-│                 │   • A code enforcer reviewing every line  │
-│                 │                                           │
-│                 │  Keeps two files updated as your memory:  │
-│                 │  PROGRESS.md + CHANGELOG.md               │
-└────────┬────────┘                                           │
-         │ Outputs: CHANGELOG.md, PROGRESS.md                │
-         ▼                                                    │
-┌─────────────────┐                                           │
-│  STEP 4         │  Before you launch (or at any checkpoint) │
-│  Code Evaluator │  this scores your code against your       │
-│                 │  original plan. It finds security holes,  │
-│  code-          │  missing features, and quality problems   │
-│  evaluator/     │  — and tells you exactly what to fix.     │
-│                 │                                           │
-│                 │  Gives your project a grade: A to F.      │
-└─────────────────┘                                           │
-         │ Outputs: Audit Report with scores + fix list       │
-         └──────────────────────────────────────────────────►┘
+YOUR IDEA
+    │
+    ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  STEP 1 — PRD GENERATOR                                          │
+│  prd-generator/                                                  │
+│                                                                  │
+│  You type one sentence. The prompt asks you questions in small   │
+│  batches until it understands your product completely. Then it   │
+│  writes a full 16-section product plan — features, users, rules, │
+│  edge cases, business model, compliance, timeline. Everything.   │
+│                                                                  │
+│  Output: PRD.md                                                  │
+└────────────────────────────────┬─────────────────────────────────┘
+                                 │ PRD.md
+                                 ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  STEP 2 — ARCHITECT (Product Initialisation)                     │
+│  product-initialisation/                                         │
+│                                                                  │
+│  Takes your product plan and designs the technical structure.    │
+│  What tech to use. How the files are organised. What the         │
+│  database looks like. How everything connects. How to keep       │
+│  it secure. How to test and deploy it.                           │
+│                                                                  │
+│  Also creates your SSOT — a single locked reference that every  │
+│  coding session reads first so all code stays consistent.        │
+│                                                                  │
+│  Output: ARCHITECTURE.md (with SSOT)                            │
+└────────────────────────────────┬─────────────────────────────────┘
+                                 │ PRD.md + ARCHITECTURE.md
+                                 ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  STEP 3 — FEATURE SPEC                                           │
+│  feature-spec/                                                   │
+│                                                                  │
+│  Before building a complex feature, this prompt writes the       │
+│  exact contract for it. Every API endpoint and its shape.        │
+│  Every state the data can be in. Every edge case and what        │
+│  should happen. Pre-written test descriptions. A binary          │
+│  checklist of what counts as done.                               │
+│                                                                  │
+│  Run once per feature — not once per project. Skip for simple   │
+│  features. Essential for anything complex.                       │
+│                                                                  │
+│  Output: specs/FEATURE-SPEC-[F-ID]-[name].md                    │
+└────────────────────────────────┬─────────────────────────────────┘
+                                 │ ARCHITECTURE.md + Feature Spec
+                                 ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  STEP 4 — AGENT WORKFLOWS                                        │
+│  agent-workflows/                                                │
+│                                                                  │
+│  The prompt you use every single coding day. Paste it at the    │
+│  start of every session. Your AI becomes a full team:            │
+│                                                                  │
+│    🗂️  Project Manager  — tracks deadlines and pace              │
+│    🏛️  Architect        — guards your technical decisions         │
+│    💻  Developer        — plans tasks and maps dependencies      │
+│    🧪  QA Engineer      — tracks test coverage and bugs          │
+│    🛡️  Code Enforcer    — reviews every line of code written     │
+│    🔧  Tech Debt        — watches quality trend across sessions  │
+│    🔐  Security         — flags vulnerabilities as they appear   │
+│    📝  Documentation    — catches undocumented code              │
+│                                                                  │
+│  Keeps two files updated as your project memory:                 │
+│  PROGRESS.md (current state) + CHANGELOG.md (full history)      │
+│                                                                  │
+│  Output: CHANGELOG.md + PROGRESS.md (updated every session)     │
+└────────────────────────────────┬─────────────────────────────────┘
+                                 │ Code + Feature Spec + CHANGELOG
+                                 ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  STEP 5 — CODE EVALUATOR                                         │
+│  code-evaluator/                                                 │
+│                                                                  │
+│  Before any launch or milestone, this reads your code and        │
+│  scores it against your original plan and Feature Specs.         │
+│  Finds security holes, missing features, quality problems,       │
+│  and loose ends — then gives you a prioritised fix list.         │
+│                                                                  │
+│  Grades your project A to F. Scores out of 100.                  │
+│                                                                  │
+│  Output: Audit Report with scores + fix list                     │
+└────────────────────────────────┬─────────────────────────────────┘
+                                 │
+                                 ▼
+                    PRODUCTION-GRADE SHIPPED CODE
 ```
 
 ---
 
-## Step 1 — PRD Generator
+## What Lives in Your Project Folder
 
+As you move through the steps, your project folder builds up like this:
+
+```
+your-project/
+│
+├── PRD.md                               ← from Step 1
+├── ARCHITECTURE.md                      ← from Step 2 (contains SSOT)
+├── PROGRESS.md                          ← from Step 4 (updated every session)
+├── CHANGELOG.md                         ← from Step 4 (updated every session)
+│
+├── specs/                               ← from Step 3 (one file per feature)
+│   ├── FEATURE-SPEC-F-005-shift-swaps.md
+│   ├── FEATURE-SPEC-F-006-time-off.md
+│   └── FEATURE-SPEC-F-007-notifications.md
+│
+└── src/                                 ← your actual code
+```
+
+These files are your project's memory. They stay in your repo.
+They get updated as your project grows.
+
+---
+
+## How the Three Core Documents Connect
+
+Once Steps 1 through 3 are done, three documents drive everything that follows:
+
+| Document | Created in | Read by | What it does |
+|---|---|---|---|
+| `ARCHITECTURE.md` (SSOT) | Step 2 | Steps 3, 4, 5 | Locks conventions — every file checked against it |
+| `FEATURE-SPEC-[F-ID].md` | Step 3 | Steps 4, 5 | The contract each feature is built and scored against |
+| `PROGRESS.md` + `CHANGELOG.md` | Step 4 | Step 4 ongoing | The memory that carries state between sessions |
+
+The SSOT and Feature Spec are what the Code Enforcer in Step 4 checks code against.
+The Feature Spec acceptance criteria are what the Code Evaluator in Step 5 scores against.
+Everything is connected. Nothing is standalone.
+
+---
+
+## Step-by-Step Guide
+
+### Step 1 — PRD Generator
 📁 `prd-generator/`
 
-### What it does
+**What it does**
 
-PRD stands for Product Requirements Document. It is the written plan for your product —
-what it does, who uses it, what the rules are, how it handles edge cases.
+PRD stands for Product Requirements Document — the written plan for your product.
+Most people skip this and start building. That is why most projects run over time.
 
-Most people skip this step and jump straight to building. That is why most software
-projects run over time and over budget — the plan was never clear to begin with.
+This prompt asks you questions in batches across 7 areas: the problem and users,
+the features, user flows, integrations, business context, compliance, and timeline.
+It will not write the plan until every gap is filled.
+When done you have a 16-section document covering everything a developer needs.
 
-This prompt asks you questions in small batches (3–4 at a time) across 7 areas:
+**How to use it**
 
-1. Who has the problem and what is the problem
-2. What the core features are
-3. How users move through the product
-4. What other tools it connects to
-5. The business context (pricing, competitors)
-6. Compliance and security needs
-7. Timeline and scale
+1. Copy `prd-generator/prd-generator-pr...` and paste into your AI
+2. Type your idea — one sentence is enough:
+   > *"I want to build an app where restaurant managers post shifts and staff pick them up"*
+3. Answer the questions 3–4 at a time
+4. Save the output as `PRD.md`
 
-It will not write your plan until all the gaps are filled. When it is done,
-you have a 16-section document that covers everything.
-
-### How to use it
-
-1. Open `prd-generator/prd-generator-pr...` and copy the full contents
-2. Paste it into your AI assistant
-3. After the prompt, type your idea — one sentence is fine:
-   > *"I want to build an app where restaurant managers can post shifts and employees can pick them up"*
-4. Answer the questions as they come — in batches of 3–4
-5. When all questions are answered, the AI writes your PRD
-6. Save the output as `PRD.md` in your project folder
-
-**Not sure what to expect?** Read `prd-generator/example.md` first — it shows the
-complete conversation from rough idea to finished PRD for a real project.
+**See a real example first:** `prd-generator/example.md`
 
 ---
 
-## Step 2 — Product Initialisation (Architect)
-
+### Step 2 — Architect
 📁 `product-initialisation/`
 
-### What it does
+**What it does**
 
-Once you have your PRD, this prompt reads it and designs how the software is built —
-not what it does (that is the PRD's job) but how it is structured underneath.
+Reads your PRD and designs the technical structure — not what to build but how.
+Covers tech stack, folder layout, database design, security, testing, and deployment.
 
-It produces a blueprint that covers:
+Creates the **SSOT** — a locked reference sheet every coding session reads first.
+This keeps all code consistent across the whole project — same naming, same patterns,
+same conventions, no matter when a file was written or who wrote it.
 
-- What tech stack to use (and which versions)
-- How to organise your folders and files
-- What the database looks like (all the tables and relationships)
-- How the frontend and backend talk to each other
-- How security is handled
-- How to test the code
-- How to deploy it
+**How to use it**
 
-Most importantly, it creates the **Single Source of Truth (SSOT)** — a reference
-sheet that locks all your decisions in one place. Every time your AI generates code
-for this project, it reads the SSOT first so every file is consistent with every other.
+1. Copy `product-initialisation/master-prompt-...` and paste into your AI
+2. Paste your `PRD.md` straight after
+3. Answer the technical questions in batches
+4. Type: **"Phase 0 is complete. Generate the blueprint."**
+5. Save the output as `ARCHITECTURE.md`
 
-Think of it as: the PRD says *what* to build. The blueprint says *how* to build it.
+The SSOT section of `ARCHITECTURE.md` is pasted into every session from here on.
 
-### How to use it
-
-1. Open `product-initialisation/master-prompt-...` and copy the full contents
-2. Paste it into your AI assistant, followed by your `PRD.md`
-3. Answer the technical questions it asks (in batches of 3–4)
-4. When ready, tell it: **"Phase 0 is complete. Generate the blueprint."**
-5. Save the output as `ARCHITECTURE.md` in your project folder
-
-**The SSOT section of `ARCHITECTURE.md` is the most important output.**
-You will paste this into every coding session from now on.
-
-**See a real example** in `product-initialisation/example.md`.
+**See a real example:** `product-initialisation/example.md`
 
 ---
 
-## Step 3 — Agent Workflows
+### Step 3 — Feature Spec
+📁 `feature-spec/`
 
+**What it does**
+
+When you tell an AI to "build the shift swap feature," it fills gaps with assumptions.
+For complex features those assumptions become bugs.
+
+This prompt writes a precise contract for each feature before coding starts:
+
+- Every API endpoint and the exact shape of its data
+- Every state the data can be in and what triggers each change
+- Every edge case and exactly what should happen
+- Pre-written test descriptions a developer can implement directly
+- A binary pass/fail checklist of what counts as done
+
+Coding sessions load this spec as their reference. The Code Enforcer checks
+code against it. The Code Evaluator scores the feature against it.
+
+**You do not use this for every feature.** Only when a feature is complex.
+The how-to-use guide has a 30-second decision checklist.
+
+**How to use it**
+
+1. Copy `feature-spec/feature-spec-pr...` and paste into your AI
+2. Paste your `PRD.md` and the SSOT section from `ARCHITECTURE.md`
+3. Name the feature: *"Feature to spec: F-005 — Shift Swap Requests"*
+4. Answer the question batches
+5. Type: **"Phase 0 complete. Generate the spec."**
+6. Save to `specs/FEATURE-SPEC-[F-ID]-[name].md`
+
+**See a real example:** `feature-spec/example.md` — a full spec with 7 states,
+16 edge cases, and 15 acceptance criteria.
+
+---
+
+### Step 4 — Agent Workflows
 📁 `agent-workflows/`
 
-### What it does
+**What it does**
 
-This is the prompt you use every day while building. You paste it at the start of
-every coding session. It turns your AI assistant into a full team of specialists
-that work alongside you.
+The prompt you use every single coding day. Paste it at the start of every session.
 
-**The five permanent team members:**
+Your AI becomes a full team. Eight specialists running simultaneously:
 
 | Role | What they do |
 |---|---|
-| 🗂️ Project Manager | Tracks your deadlines, checks if you are on pace, tells you what needs attention today |
-| 🏛️ Architect | Makes sure code decisions match your blueprint, catches architectural drift |
-| 💻 Developer | Plans which tasks to tackle, maps what is blocked by what |
-| 🧪 QA Engineer | Tracks test coverage, flags bugs, escalates issues open too long |
-| 🛡️ Code Enforcer | Reviews every line of code written — automatically, every session |
+| 🗂️ Project Manager | Tracks deadlines, calculates pace, flags what needs attention |
+| 🏛️ Architect | Catches code that drifts from your blueprint |
+| 💻 Developer | Plans tasks, maps what is blocked by what |
+| 🧪 QA Engineer | Tracks test coverage, escalates old open bugs |
+| 🛡️ Code Enforcer | Reviews every line of code automatically |
+| 🔧 Tech Debt | Tracks whether code quality is improving or declining |
+| 🔐 Security | Flags vulnerabilities as they appear |
+| 📝 Documentation | Catches undocumented functions and missing config |
 
-**Plus three always-on support agents:**
+**Session modes** — choose one to control cost and focus:
 
-| Role | What they do |
-|---|---|
-| 🔧 Tech Debt | Tracks quality trend across sessions — are things getting better or worse? |
-| 🔐 Security | Flags new dependencies, unprotected endpoints, exposed personal data |
-| 📝 Documentation | Catches undocumented functions, missing env variable definitions |
-
-**The Code Enforcer** is the most important one. Every time any code appears in
-your session — code you wrote, code you pasted, code the AI wrote — the Enforcer
-reviews it automatically. It has two levels:
-
-- 🔴 **Must fix before shipping** — security holes, wrong patterns, type errors
-- 🔵 **Should consider** — code that works but could be cleaner
-
-### Session Modes — Save tokens, stay focused
-
-You do not need everything every session. Declare a mode at the start:
-
-| Mode | Use it when | What loads |
+| Mode | Use when | What loads |
 |---|---|---|
-| **FULL** | Starting a sprint, planning the week | Everything — all agents, full files |
-| **TASK** | Daily coding on a specific task | SSOT + today's tasks only |
-| **REVIEW** | Reviewing code before a milestone | SSOT + files to review |
-| **HOTFIX** | Fixing a specific bug | SSOT + the bug description |
+| **FULL** | Sprint start, planning | Everything — all agents, full files |
+| **TASK** | Daily coding (most common) | SSOT + today's tasks only |
+| **REVIEW** | Code review before milestone | SSOT + files to review |
+| **HOTFIX** | Fixing a specific bug | SSOT + bug description |
 
-Most of your sessions will be **TASK MODE**. It is lean and fast.
+**The two memory files**
 
-### The two memory files
+At session end the AI writes updated versions of two files. You copy them back
+to your repo. Next session you paste them in. That is how memory works here.
 
-The system keeps two files that carry your project's memory across sessions:
+- **PROGRESS.md** — the current state of the whole project
+- **CHANGELOG.md** — the permanent record of every decision and change
 
-- **PROGRESS.md** — the current state (features, tasks, bugs, blockers, deadlines)
-- **CHANGELOG.md** — the full history (every decision, every fix, every change)
+**How to use it — daily**
 
-At the end of every session, the AI writes updated versions of both files.
-You copy them back into your project folder. Next session, you paste them in again.
-That is how the AI remembers everything between sessions.
+Session start:
+1. Declare mode: `MODE: TASK`
+2. Paste SSOT from `ARCHITECTURE.md`
+3. Paste active section of `PROGRESS.md`
+4. Paste the relevant Feature Spec if building a complex feature
+5. Say what you want to work on
 
-### How to use it — daily workflow
-
-**Session start:**
-1. Copy the prompt from `agent-workflows/work-flows-gen...`
-2. Paste it into your AI assistant
-3. Declare your mode: `MODE: TASK`
-4. Paste the SSOT section from your `ARCHITECTURE.md`
-5. Paste the active section of your `PROGRESS.md`
-6. Tell it what you want to work on today
-
-**During the session:**
-- Write or review code — the Enforcer runs automatically
-- Use commands like `mark complete: T-014` or `add bug: login failing on mobile | severity: high`
-- Ask for any agent on demand: `run pm` or `drift check`
-
-**Session end:**
+Session end:
 1. Type `session summary`
-2. Copy the updated `CHANGELOG.md` and `PROGRESS.md` the AI outputs
-3. Paste them back into your repo
-4. Commit everything
+2. Copy the updated `CHANGELOG.md` and `PROGRESS.md`
+3. Paste them into your repo and commit
 
-**Full usage guide with real examples:** `agent-workflows/how-to-use.md`
+**Full guide with real examples:** `agent-workflows/how-to-use.md`
 
 ---
 
-## Step 4 — Code Evaluator
-
+### Step 5 — Code Evaluator
 📁 `code-evaluator/`
 
-### What it does
+**What it does**
 
-Use this before any major release or milestone. It reads your code alongside your
-original PRD and gives you an honest report card.
+Use before any release or at the end of each milestone. It reads your code
+alongside your PRD and Feature Specs and gives you an honest report card.
 
-It checks seven things:
+Seven scored sections:
 
 | Check | What it looks for |
 |---|---|
-| PRD Compliance | Did you build everything you said you would? |
-| Feature Quality | Are edge cases handled or just the happy path? |
-| Code Quality | Is the code clean, consistent, and maintainable? |
-| Security | Are there vulnerabilities? (OWASP Top 10) |
+| PRD Compliance | Did you build everything you planned? |
+| Feature Quality | Are edge cases handled or just the easy path? |
+| Code Quality | Is the code clean, consistent, maintainable? |
+| Security | Any vulnerabilities? (industry-standard checks) |
 | Loose Ends | TODOs in production? Unhandled errors? Race conditions? |
-| Improvements | What to fix now vs. what can wait |
-| Production Readiness | Overall grade: A to F |
+| Improvements | What to fix now versus what can wait |
+| Production Readiness | Overall grade A to F — scored out of 100 |
 
-It gives you a score out of 100 and a letter grade. More importantly, it gives you
-a prioritised list of exactly what to fix before you go live.
+When Feature Specs exist the Evaluator scores their acceptance criteria directly.
+Each unchecked criterion becomes a finding in the report.
 
-### How to use it
+**How to use it**
 
-1. Copy the prompt from `code-evaluator/prodution-quality-and...`
-2. Paste it into your AI assistant, followed by your `PRD.md` and your code
-3. Answer the clarifying questions it asks
-4. Receive the full audit report with scores and fix list
+1. Copy `code-evaluator/prodution-quality-and...` and paste into your AI
+2. Paste your `PRD.md`, the relevant Feature Specs, and your code files
+3. Answer the clarifying questions
+4. Receive the full report with scores and a prioritised fix list
 
-**See a real example** in `code-evaluator/example.md` — including a project that
-scored 51/100 with two critical security vulnerabilities found.
+**See a real example:** `code-evaluator/example.md` — a project that scored
+51 out of 100 with two critical security problems caught before going live.
 
 ---
 
-## Quick Reference — The Four Commands You Need Most
+## Quick Reference — Commands You Will Use Most
 
-Once you are running Step 3 daily, these are the commands you will use the most:
+Once you are in Step 4 daily, these are the commands you will reach for most:
 
 ```
 mark complete: [task ID]
-→ Tells the system a task is done. Updates your progress automatically.
+→ Marks a task done. Updates PROGRESS.md automatically.
 
 add bug: [description] | severity: critical / high / medium / low
-→ Logs a bug. The QA agent tracks it and escalates if it sits open too long.
+→ Logs a bug. Tracked and escalated if it sits open too long.
 
 log decision: [what you decided and why]
-→ Records an architectural decision permanently. Never gets deleted. Searchable later.
+→ Records a permanent decision. Never deleted. Always findable later.
+
+standards check: [paste any code]
+→ Runs a full Code Enforcer review on any existing code, any time.
+
+drift check
+→ Scans recent code for deviations from your ARCHITECTURE.md conventions.
 
 session summary
-→ Closes the session. AI outputs updated PROGRESS.md and CHANGELOG.md to copy back.
+→ Closes the session. Outputs updated PROGRESS.md and CHANGELOG.md to copy back.
 ```
 
 ---
@@ -332,57 +401,53 @@ session summary
 > **Working code is not enough.**
 >
 > Code that passes tests but is messy, insecure, or inconsistent is still a problem.
-> It just hasn't caused pain yet.
+> It just has not caused pain yet.
 >
-> CODE-SMITH enforces production quality at every step — not as an option,
-> but as the default. Every line reviewed. Every decision logged. Every session closed.
+> CODE-SMITH enforces production quality at every step — through the Feature Spec
+> contract in Step 3, the Code Enforcer in Step 4, and the final audit in Step 5.
+> Every line reviewed. Every decision logged. Every session closed clean.
 
 ---
 
 ## FAQ
 
 **Do I need to be a developer to use this?**
-You need to understand the product you are building. A developer (or AI) does the
-actual coding. The prompts are designed so that even a non-technical founder can
-run the PRD Generator and Architect steps to produce documents a developer can use.
+You need to understand the product you are building. A developer or AI does the
+actual coding. Steps 1 and 2 are designed so a non-technical founder can produce
+documents a developer can act on immediately.
 
 **Which AI assistant should I use?**
 Any of them. Claude, ChatGPT, Gemini, Cursor, Windsurf — these prompts work with
 all of them. Claude Sonnet is recommended for the best balance of quality and cost.
 
-**Do I use all four prompts on every project?**
-Yes, in order. Steps 1 and 2 are done once at the start. Step 3 is used every
-coding session. Step 4 is used at milestones and before launch.
+**Do I use all five prompts on every project?**
+Steps 1, 2, 4, and 5 are used on every project. Step 3 (Feature Spec) is run
+per feature — only for features complex enough to need it. The how-to-use guide
+includes a quick checklist to help you decide in 30 seconds.
 
 **What if I already have a PRD or blueprint?**
-Skip to the step you need. Step 3 works as long as you have an `ARCHITECTURE.md`
-with a SSOT section. If you do not have one, run Step 2 first — it only takes one session.
+Start at whichever step you need. Step 4 works as long as you have an
+`ARCHITECTURE.md` with a SSOT section. Step 3 works as long as you have a PRD
+and SSOT. You do not have to start from scratch.
 
 **How long does each step take?**
-- Step 1 (PRD Generator): 20–40 minutes of Q&A, then the AI writes it
-- Step 2 (Architect): 15–30 minutes of Q&A, then the AI writes the blueprint
-- Step 3 (Agent Workflows): 5 minutes to open a session, runs alongside your work
-- Step 4 (Code Evaluator): 15–30 minutes per audit
+
+| Step | Time |
+|---|---|
+| Step 1 — PRD Generator | 20–40 min of questions, then AI writes it |
+| Step 2 — Architect | 15–30 min of questions, then AI writes it |
+| Step 3 — Feature Spec | 15–25 min per feature |
+| Step 4 — Agent Workflows | 5 min to open, runs alongside your work |
+| Step 5 — Code Evaluator | 15–30 min per audit |
 
 **What are PROGRESS.md and CHANGELOG.md?**
-They are the two files that give the AI memory between sessions. The AI cannot
-remember your last conversation — these files replace that memory. Always save
-and commit them at the end of every session.
+They replace the AI's memory between sessions. The AI cannot remember your last
+conversation — these two files carry everything forward. Always save and commit
+them at the end of every session. This is the one habit the whole system depends on.
 
----
-
-## Repo Folder Guide
-
-| Folder | Contains | When you need it |
-|---|---|---|
-| `prd-generator/` | The PRD prompt + example + guide | At the start of a project |
-| `product-initialisation/` | The Architect prompt + example | After you have a PRD |
-| `agent-workflows/` | The Workflow prompt + usage guide | Every coding session |
-| `code-evaluator/` | The Audit prompt + example | Before launch / at milestones |
-
-Every folder has at least one `example.md` so you can see what the output looks like
-before using the prompt yourself. Read the example first — it makes the prompt much
-easier to use.
+**Do I need a Feature Spec for every feature?**
+No. Only for features that are complex. The `feature-spec/how-to-use.md` guide
+has a decision checklist that takes 30 seconds to run through.
 
 ---
 
@@ -392,14 +457,31 @@ If this is your first time using CODE-SMITH:
 
 1. **Read** `prd-generator/example.md` — see what a finished product plan looks like
 2. **Read** `product-initialisation/example.md` — see what a technical blueprint looks like
-3. **Read** `agent-workflows/how-to-use.md` — understand the daily workflow
-4. **Open** `prd-generator/prd-generator-pr...` and paste it into your AI with your idea
-5. **Follow the steps** in order from there
+3. **Read** `feature-spec/example.md` — see what a feature contract looks like
+4. **Read** `agent-workflows/how-to-use.md` — understand the daily workflow
+5. **Open** `prd-generator/prd-generator-pr...` and paste it into your AI with your idea
+6. **Follow the steps** in order from there
 
 The whole system is designed so each step feeds naturally into the next.
-You will know exactly what to do at each stage.
+The output of one step is the input for the next.
+You will always know exactly what to do.
 
 ---
 
-*Built to make production-grade software development accessible — for solo founders,
-small teams, and anyone who wants to build the right way from day one.*
+## Folder Guide
+
+| Folder | Contains | When you need it |
+|---|---|---|
+| `prd-generator/` | PRD prompt + example + guide | Start of every project |
+| `product-initialisation/` | Architect prompt + example + guide | After you have a PRD |
+| `feature-spec/` | Feature Spec prompt + example + guide | Before building complex features |
+| `agent-workflows/` | Workflow prompt + example + guide | Every coding session |
+| `code-evaluator/` | Audit prompt + example | Before launch and at milestones |
+
+Every folder has at least one `example.md` so you can see the output before
+using the prompt yourself. Read the example first — it makes everything faster.
+
+---
+
+*Built to make production-grade software development accessible —
+for solo founders, small teams, and anyone who wants to build the right way from day one.*
