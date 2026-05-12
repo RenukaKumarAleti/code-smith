@@ -67,10 +67,10 @@ export function HeroIntro() {
         className="mt-10 flex flex-wrap items-center gap-4"
       >
         <Link
-          href="/docs"
+          href="/start/new"
           className="group inline-flex items-center gap-2 rounded-md bg-fg px-5 py-3 text-sm font-medium text-bg transition-transform duration-200 hover:-translate-y-0.5"
         >
-          Read the docs
+          Start a project
           <span
             aria-hidden
             className="inline-block transition-transform duration-200 group-hover:translate-x-1"
@@ -79,10 +79,10 @@ export function HeroIntro() {
           </span>
         </Link>
         <Link
-          href="/docs/prd-generator"
+          href="/docs"
           className="inline-flex items-center gap-2 rounded-md border border-border bg-transparent px-5 py-3 text-sm font-medium text-fg transition-colors hover:border-border-strong"
         >
-          Start at Step 1
+          Read the docs
         </Link>
       </motion.div>
     </>

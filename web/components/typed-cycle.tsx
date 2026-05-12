@@ -11,7 +11,7 @@ type Props = {
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-export function TypedCycle({ words, interval = 2200, className }: Props) {
+export function TypedCycle({ words, interval = 2400, className }: Props) {
   const reduced = useReducedMotion();
   const [idx, setIdx] = useState(0);
 
@@ -26,26 +26,27 @@ export function TypedCycle({ words, interval = 2200, className }: Props) {
   }
 
   return (
-    <span
-      className={`relative inline-block align-baseline ${className ?? ""}`}
+    <motion.span
+      layout
+      transition={{ layout: { duration: 0.4, ease: EASE } }}
+      className={`relative inline-flex items-baseline overflow-hidden align-baseline ${
+        className ?? ""
+      }`}
       aria-live="polite"
+      style={{ verticalAlign: "baseline" }}
     >
-      {/* Sizing ghost — keeps layout stable across the longest word */}
-      <span aria-hidden className="invisible whitespace-nowrap">
-        {words.reduce((a, b) => (b.length > a.length ? b : a))}
-      </span>
-      <AnimatePresence mode="popLayout" initial={false}>
+      <AnimatePresence mode="wait" initial={false}>
         <motion.span
           key={words[idx]}
-          initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+          initial={{ opacity: 0, y: 10, filter: "blur(3px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -12, filter: "blur(4px)" }}
-          transition={{ duration: 0.45, ease: EASE }}
-          className="absolute left-0 right-0 whitespace-nowrap italic"
+          exit={{ opacity: 0, y: -10, filter: "blur(3px)" }}
+          transition={{ duration: 0.32, ease: EASE }}
+          className="whitespace-nowrap italic"
         >
           {words[idx]}
         </motion.span>
       </AnimatePresence>
-    </span>
+    </motion.span>
   );
 }

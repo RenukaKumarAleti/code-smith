@@ -24,14 +24,13 @@ export function SiteHeader() {
           >
             Skills
           </Link>
-          <a
-            href="https://github.com/"
-            className="text-muted transition-colors hover:text-fg"
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            href="/start"
+            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-fg transition-colors hover:border-border-strong"
           >
-            GitHub
-          </a>
+            Start walkthrough
+            <span aria-hidden>→</span>
+          </Link>
         </nav>
       </div>
     </header>
