@@ -18,29 +18,32 @@ of one into the next, and your AI assistant becomes a full development team.
 ```
 CODE-SMITH/
 │
-├── prd-generator/           ← STEP 1: Turn your idea into a detailed plan
-│   ├── prd-generator-pr...  │  The prompt itself (copy this into your AI)
-│   ├── example.md           │  See a real example of what it produces
-│   └── how-to-use.md        │  Step-by-step usage guide
+├── prd-generator/                       ← STEP 1: Turn your idea into a detailed plan
+│   ├── prd-generator-prompt.md          │  The prompt itself (copy this into your AI)
+│   ├── example.md                       │  See a real example of what it produces
+│   └── how-to-use.md                    │  Step-by-step usage guide
 │
-├── product-initialisation/  ← STEP 2: Turn your plan into a technical blueprint
-│   ├── master-prompt-...    │  The prompt itself
-│   ├── example.md           │  See a real example of what it produces
-│   └── how-to-use.md        │  Step-by-step usage guide
+├── product-initialisation/              ← STEP 2: Turn your plan into a technical blueprint
+│   ├── master-prompt-architect.md       │  The prompt itself
+│   ├── example.md                       │  See a real example of what it produces
+│   └── how-to-use.md                    │  Step-by-step usage guide
 │
-├── feature-spec/            ← STEP 3: Write a precise contract for each feature
-│   ├── feature-spec-pr...   │  The prompt itself
-│   ├── example.md           │  See a real example of what it produces
-│   └── how-to-use.md        │  Step-by-step usage guide
+├── design-spec/                         ← STEP 2.5 (OPTIONAL): Lock the visual & UX contract
+│   ├── design-spec-master-prompt.md     │  The prompt itself
+│   └── how-to-use.md                    │  Step-by-step usage guide + skip checklist
 │
-├── agent-workflows/         ← STEP 4: Manage every coding session
-│   ├── work-flows-gen...    │  The prompt itself
-│   ├── how-to-use.md        │  Step-by-step usage guide
-│   └── example.md           │  See a real example of a full session
+├── feature-spec/                        ← STEP 3: Write a precise contract for each feature
+│   ├── feature-spec-master-prompt.md    │  The prompt itself
+│   ├── example.md                       │  See a real example of what it produces
+│   └── how-to-use.md                    │  Step-by-step usage guide
 │
-├── code-evaluator/          ← STEP 5: Check your code before you ship
-│   ├── prodution-quality... │  The prompt itself
-│   └── example.md           │  See a real example of what it produces
+├── agent-workflows/                     ← STEP 4: Manage every coding session
+│   ├── work-flows-generator.md          │  The prompt itself
+│   └── how-to-use.md                    │  Step-by-step usage guide
+│
+├── code-evaluator/                      ← STEP 5: Check your code before you ship
+│   ├── code-evaluator-master-prompt.md  │  The prompt itself
+│   └── example.md                       │  See a real example of what it produces
 │
 └── README.md                ← You are here
 ```
@@ -89,6 +92,22 @@ YOUR IDEA
 │  Output: ARCHITECTURE.md (with SSOT)                            │
 └────────────────────────────────┬─────────────────────────────────┘
                                  │ PRD.md + ARCHITECTURE.md
+                                 ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  STEP 2.5 — DESIGN SPEC (OPTIONAL)                               │
+│  design-spec/                                                    │
+│                                                                  │
+│  For user-facing or design-led products. Locks the visual and   │
+│  UX contract: tokens (color, type, spacing, motion), component   │
+│  inventory with states, wireframes per surface, accessibility    │
+│  rules, responsive behavior, and a design acceptance checklist.  │
+│                                                                  │
+│  Accepts Figma file links if you have them. Skip for backend-   │
+│  heavy products and internal admin tools.                        │
+│                                                                  │
+│  Output: design-spec/DESIGN-SPEC.md (+ optional tokens.json)    │
+└────────────────────────────────┬─────────────────────────────────┘
+                                 │ + DESIGN-SPEC.md (if generated)
                                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │  STEP 3 — FEATURE SPEC                                           │
@@ -159,6 +178,7 @@ your-project/
 │
 ├── PRD.md                               ← from Step 1
 ├── ARCHITECTURE.md                      ← from Step 2 (contains SSOT)
+├── DESIGN-SPEC.md                       ← from Step 2.5 (optional, contains Design SSOT)
 ├── PROGRESS.md                          ← from Step 4 (updated every session)
 ├── CHANGELOG.md                         ← from Step 4 (updated every session)
 │
@@ -181,7 +201,8 @@ Once Steps 1 through 3 are done, three documents drive everything that follows:
 
 | Document | Created in | Read by | What it does |
 |---|---|---|---|
-| `ARCHITECTURE.md` (SSOT) | Step 2 | Steps 3, 4, 5 | Locks conventions — every file checked against it |
+| `ARCHITECTURE.md` (SSOT) | Step 2 | Steps 2.5, 3, 4, 5 | Locks technical conventions — every file checked against it |
+| `DESIGN-SPEC.md` (Design SSOT) | Step 2.5 (optional) | Steps 3, 4, 5 | Locks visual / UX conventions — every UI file checked against it |
 | `FEATURE-SPEC-[F-ID].md` | Step 3 | Steps 4, 5 | The contract each feature is built and scored against |
 | `PROGRESS.md` + `CHANGELOG.md` | Step 4 | Step 4 ongoing | The memory that carries state between sessions |
 
@@ -241,6 +262,44 @@ same conventions, no matter when a file was written or who wrote it.
 The SSOT section of `ARCHITECTURE.md` is pasted into every session from here on.
 
 **See a real example:** `product-initialisation/example.md`
+
+---
+
+### Step 2.5 — Design Spec *(optional)*
+📁 `design-spec/`
+
+**What it does**
+
+For user-facing or design-led products, locks the visual and UX contract before
+features are specced or built. Produces a **Design SSOT** (color, type, spacing,
+radii, shadow, motion tokens), a complete component inventory with states, one
+wireframe per major surface, accessibility rules, responsive rules, and a binary
+design acceptance checklist that the Code Evaluator scores against in Step 5.
+
+Accepts Figma file links and screenshots if you have them — uses them as
+direction, then writes the spec that pins them to tokens.
+
+**Skip it when** the product is backend-heavy, an internal admin panel, or an
+MVP that will accept the defaults of an off-the-shelf component library. A
+30-second decision checklist lives in `design-spec/how-to-use.md`.
+
+**How to use it**
+
+1. Copy `design-spec/design-spec-master-prompt.md` and paste into your AI
+2. Paste your `PRD.md` and the SSOT section from `ARCHITECTURE.md`
+3. *(Optional)* Paste Figma file URLs, screenshots, or 3–5 reference URLs
+4. Answer the Phase 0 question batches
+5. Type: **"Phase 0 is complete. Generate the design spec."**
+6. Save the output as `design-spec/DESIGN-SPEC.md`
+
+The Design SSOT block is pasted into every UI coding session from here on,
+alongside the Architecture SSOT.
+
+**Reference design-skills repos worth bundling:**
+[anthropics/skills](https://github.com/anthropics/skills),
+[nexu-io/open-design (57 skills)](https://github.com/nexu-io/open-design),
+[Claude Design by Anthropic Labs](https://www.anthropic.com/news/claude-design-anthropic-labs).
+The prompt's Phase 2 recommends which to load for your specific project.
 
 ---
 
@@ -360,7 +419,7 @@ Each unchecked criterion becomes a finding in the report.
 
 **How to use it**
 
-1. Copy `code-evaluator/prodution-quality-and...` and paste into your AI
+1. Copy `code-evaluator/code-evaluator-master-prompt.md` and paste into your AI
 2. Paste your `PRD.md`, the relevant Feature Specs, and your code files
 3. Answer the clarifying questions
 4. Receive the full report with scores and a prioritised fix list
@@ -420,10 +479,12 @@ documents a developer can act on immediately.
 Any of them. Claude, ChatGPT, Gemini, Cursor, Windsurf — these prompts work with
 all of them. Claude Sonnet is recommended for the best balance of quality and cost.
 
-**Do I use all five prompts on every project?**
-Steps 1, 2, 4, and 5 are used on every project. Step 3 (Feature Spec) is run
-per feature — only for features complex enough to need it. The how-to-use guide
-includes a quick checklist to help you decide in 30 seconds.
+**Do I use all the prompts on every project?**
+Steps 1, 2, 4, and 5 are used on every project. Step 2.5 (Design Spec) is
+optional — run it for user-facing / design-led products, skip it for backend
+and internal tools. Step 3 (Feature Spec) is run per feature — only for
+features complex enough to need it. Each how-to-use guide includes a quick
+checklist to help you decide in 30 seconds.
 
 **What if I already have a PRD or blueprint?**
 Start at whichever step you need. Step 4 works as long as you have an
@@ -436,6 +497,7 @@ and SSOT. You do not have to start from scratch.
 |---|---|
 | Step 1 — PRD Generator | 20–40 min of questions, then AI writes it |
 | Step 2 — Architect | 15–30 min of questions, then AI writes it |
+| Step 2.5 — Design Spec *(optional)* | 20–40 min of questions, then AI writes it |
 | Step 3 — Feature Spec | 15–25 min per feature |
 | Step 4 — Agent Workflows | 5 min to open, runs alongside your work |
 | Step 5 — Code Evaluator | 15–30 min per audit |
@@ -474,8 +536,9 @@ You will always know exactly what to do.
 |---|---|---|
 | `prd-generator/` | PRD prompt + example + guide | Start of every project |
 | `product-initialisation/` | Architect prompt + example + guide | After you have a PRD |
+| `design-spec/` *(optional)* | Design Spec prompt + guide | User-facing / design-led products |
 | `feature-spec/` | Feature Spec prompt + example + guide | Before building complex features |
-| `agent-workflows/` | Workflow prompt + example + guide | Every coding session |
+| `agent-workflows/` | Workflow prompt + guide | Every coding session |
 | `code-evaluator/` | Audit prompt + example | Before launch and at milestones |
 
 Every folder has at least one `example.md` so you can see the output before

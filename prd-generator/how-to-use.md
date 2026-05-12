@@ -32,14 +32,15 @@ Save it as `PRD.md` in your project repository.
 
 ---
 
-## THIS PROMPT IS STEP 1 OF 4
+## THIS PROMPT IS STEP 1 OF 5
 
 | Step | Prompt | Input → Output |
 |------|--------|----------------|
 | **1 — This prompt** | PRD Generator | Vague idea → Enterprise PRD |
 | **2** | Architect Master Prompt | PRD → Full technical blueprint |
-| **3** | Agent Workflow Master Prompt | PRD + Blueprint → Every dev session |
-| **4** | Validator & Audit Prompt | Code + PRD → Production readiness score |
+| **3** | Feature Spec Prompt | PRD + SSOT → Per-feature contract |
+| **4** | Agent Workflow Master Prompt | PRD + Blueprint + Spec → Every dev session |
+| **5** | Validator & Audit Prompt | Code + PRD + Spec → Production readiness score |
 
 The PRD this generates is specifically structured to give the Architect Master Prompt
 everything it needs: data entities, integrations with failure behaviour, NFRs precise
