@@ -33,24 +33,27 @@ export function HeroIntro() {
         {...fadeUp(0.12)}
         className="mt-6 font-display text-5xl leading-[1.05] tracking-tight md:text-7xl"
       >
-        Turn any{" "}
-        <TypedCycle
-          words={IDEA_WORDS}
-          className="font-display italic text-fg"
-        />{" "}
-        into
-        <br />
-        <span className="relative inline-block">
-          <span className="italic">production-ready</span>
-          <motion.span
-            aria-hidden
-            initial={reduced ? false : { scaleX: 0 }}
-            animate={reduced ? undefined : { scaleX: 1 }}
-            transition={{ duration: 0.9, ease: EASE, delay: 0.7 }}
-            className="absolute -bottom-1 left-0 right-0 h-[2px] origin-left bg-fg"
+        <span className="block">Turn any</span>
+        <span className="block">
+          <TypedCycle
+            words={IDEA_WORDS}
+            className="font-display italic text-fg"
           />
-        </span>{" "}
-        software.
+        </span>
+        <span className="block">
+          into{" "}
+          <span className="relative inline-block">
+            <span className="italic">production-ready</span>
+            <motion.span
+              aria-hidden
+              initial={reduced ? false : { scaleX: 0 }}
+              animate={reduced ? undefined : { scaleX: 1 }}
+              transition={{ duration: 0.9, ease: EASE, delay: 0.7 }}
+              className="absolute -bottom-1 left-0 right-0 h-[2px] origin-left bg-fg"
+            />
+          </span>{" "}
+          software.
+        </span>
       </motion.h1>
 
       <motion.p

@@ -36,8 +36,8 @@ function Hero() {
 function Pipeline() {
   return (
     <section className="border-b border-border bg-surface/25">
-      <div className="mx-auto max-w-7xl px-6 py-28">
-        <Reveal as="header" className="mb-16 max-w-2xl">
+      <div className="mx-auto max-w-7xl px-6 pb-8 pt-16 lg:pt-20">
+        <Reveal as="header" className="mb-10 max-w-2xl">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-subtle">
             How it connects
           </p>

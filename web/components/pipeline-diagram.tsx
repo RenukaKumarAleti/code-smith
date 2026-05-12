@@ -93,9 +93,6 @@ function PipelineScrollytelling() {
     if (idx !== activeIndex) setActiveIndex(idx);
   });
 
-  // The progress line fills as scroll advances, with a small lead-in.
-  const lineHeight = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
-
   if (reduced) {
     return <ReducedMotionFallback />;
   }
@@ -108,20 +105,17 @@ function PipelineScrollytelling() {
       <div className="sticky top-0 flex h-screen items-center">
         <div className="grid w-full grid-cols-[1fr_1.5fr] gap-12 xl:gap-20">
           {/* Left: stepper */}
-          <nav aria-label="Pipeline progress" className="relative">
-            <div className="absolute bottom-2 left-[5px] top-2 w-[2px] bg-border" />
-            <motion.div
-              style={{ height: lineHeight }}
-              className="absolute left-[5px] top-2 w-[2px] origin-top bg-fg"
-            />
-            <ol className="space-y-7">
+          <nav aria-label="Pipeline progress">
+            <ol>
               {STEPS.map((step, i) => (
                 <StepperRow
                   key={step.key}
                   step={step}
                   index={i}
+                  isLast={i === STEPS.length - 1}
                   active={i === activeIndex}
                   past={i < activeIndex}
+                  scrollYProgress={scrollYProgress}
                 />
               ))}
             </ol>
@@ -146,18 +140,46 @@ function PipelineScrollytelling() {
 
 function StepperRow({
   step,
+  index,
+  isLast,
   active,
   past,
+  scrollYProgress,
 }: {
   step: Step;
   index: number;
+  isLast: boolean;
   active: boolean;
   past: boolean;
+  scrollYProgress: import("motion/react").MotionValue<number>;
 }) {
+  // This segment fills while the user is dwelling on this step.
+  const segmentStart = index / STEPS.length;
+  const segmentEnd = (index + 1) / STEPS.length;
+  const fillHeight = useTransform(
+    scrollYProgress,
+    [segmentStart, segmentEnd],
+    ["0%", "100%"],
+    { clamp: true },
+  );
+
   return (
-    <li className="relative flex items-start gap-5">
-      <Dot active={active} past={past} optional={!!step.optional} />
-      <Link href={`/docs/${step.key}`} className="group min-w-0 flex-1">
+    <li className="grid grid-cols-[auto_1fr] gap-x-5">
+      <div className="flex flex-col items-center">
+        <Dot active={active} past={past} optional={!!step.optional} />
+        {!isLast ? (
+          <div className="relative my-2 w-[2px] flex-1 bg-border">
+            <motion.div
+              style={{ height: fillHeight }}
+              className="absolute inset-x-0 top-0 origin-top bg-fg"
+            />
+          </div>
+        ) : null}
+      </div>
+      <Link
+        href={`/docs/${step.key}`}
+        className={`group block min-w-0 ${isLast ? "" : "pb-7"}`}
+      >
         <div className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-subtle">
           Step {step.number}
           {step.optional ? " · optional" : ""}
@@ -187,7 +209,7 @@ function Dot({
   past: boolean;
   optional: boolean;
 }) {
-  const base = "relative z-10 mt-2 h-3 w-3 shrink-0 rounded-full transition-all duration-500";
+  const base = "mt-1 h-3 w-3 shrink-0 rounded-full transition-all duration-500";
   if (optional && !active && !past) {
     return (
       <span aria-hidden className={`${base} border-2 border-dashed border-subtle bg-bg`} />
