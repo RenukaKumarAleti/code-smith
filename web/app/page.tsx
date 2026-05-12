@@ -35,9 +35,9 @@ function Hero() {
 
 function Pipeline() {
   return (
-    <section className="border-b border-border bg-surface/40">
-      <div className="mx-auto max-w-7xl px-6 py-24">
-        <Reveal as="header" className="mb-14 max-w-2xl">
+    <section className="border-b border-border bg-surface/25">
+      <div className="mx-auto max-w-7xl px-6 py-28">
+        <Reveal as="header" className="mb-16 max-w-2xl">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-subtle">
             How it connects
           </p>
@@ -68,9 +68,9 @@ function Steps() {
             Six prompts. One for every stage.
           </h2>
         </Reveal>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
           {STEPS.map((s, i) => (
-            <Reveal key={s.key} delay={i * 0.06}>
+            <Reveal key={s.key} delay={i * 0.06} className="h-full">
               <StepCard step={s} />
             </Reveal>
           ))}
