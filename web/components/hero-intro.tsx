@@ -15,10 +15,10 @@ export function HeroIntro() {
     reduced
       ? { initial: false }
       : ({
-          initial: { opacity: 0, y: 18 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.7, ease: EASE, delay },
-        } as const);
+        initial: { opacity: 0, y: 18 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.7, ease: EASE, delay },
+      } as const);
 
   return (
     <>
@@ -33,13 +33,10 @@ export function HeroIntro() {
         {...fadeUp(0.12)}
         className="mt-6 font-display text-5xl leading-[1.05] tracking-tight md:text-7xl"
       >
-        <span className="block">Turn any</span>
-        <span className="block">
-          <TypedCycle
-            words={IDEA_WORDS}
-            className="font-display italic text-fg"
-          />
-        </span>
+        <span className="block">Turn any <TypedCycle
+          words={IDEA_WORDS}
+          className="font-display italic text-fg"
+        /></span>
         <span className="block">
           into{" "}
           <span className="relative inline-block">

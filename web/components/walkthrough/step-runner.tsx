@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useProjects } from "@/lib/use-projects";
+import { hasApiKey, useSettings } from "@/lib/use-settings";
+import { SettingsModal } from "@/components/settings-modal";
 import { STEPS, getStep, type Step, type StepKey } from "@/lib/steps";
 
 const STEP_OUTPUT_LABEL: Record<StepKey, string> = {
@@ -24,6 +26,20 @@ const STEP_DEPENDENCIES: Record<StepKey, StepKey[]> = {
   "code-evaluator": ["prd-generator", "architect", "feature-spec"],
 };
 
+// Steps for which a single-shot AI generation makes sense.
+// 3 (feature spec), 4 (workflows), 5 (evaluator) stay copy-paste.
+const AI_ELIGIBLE: StepKey[] = ["prd-generator", "architect", "design-spec"];
+
+// Appended to the user message so Claude generates the artifact in one
+// shot rather than starting the prompt's interactive Phase 0 Q&A.
+const SINGLE_SHOT_DIRECTIVE = `
+
+---
+
+# Single-shot mode
+
+This run is a single-shot generation, not an interactive session. Generate the final artifact directly using the context above. If critical information is missing, make reasonable assumptions, mark them clearly with "Assumed:" prefixes inside an "Open Questions / Assumptions" section, and proceed. Skip Phase 0 questions.`;
+
 type Props = {
   projectId: string;
   step: Step;
@@ -33,12 +49,19 @@ type Props = {
 export function StepRunner({ projectId, step, promptText }: Props) {
   const router = useRouter();
   const { projects, hydrated, setStep } = useProjects();
+  const { settings, hydrated: settingsHydrated } = useSettings();
   const [output, setOutput] = useState("");
   const [showPrompt, setShowPrompt] = useState(false);
   const [copied, setCopied] = useState<"prompt" | "context" | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const project = projects.find((p) => p.id === projectId);
+  const aiEligible = AI_ELIGIBLE.includes(step.key);
+  const aiReady = settingsHydrated && hasApiKey(settings);
 
   // Hydrate output from store
   useEffect(() => {
@@ -122,6 +145,78 @@ export function StepRunner({ projectId, step, promptText }: Props) {
     window.open("https://chatgpt.com/", "_blank", "noopener,noreferrer");
   }
 
+  async function generateWithAI() {
+    if (!aiEligible) return;
+    if (!aiReady) {
+      setSettingsOpen(true);
+      return;
+    }
+    const confirmReplace =
+      output.trim().length === 0 ||
+      confirm(
+        "This will replace the current output for this step with the AI-generated result. Continue?",
+      );
+    if (!confirmReplace) return;
+
+    setAiError(null);
+    setGenerating(true);
+    setOutput("");
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": settings.apiKey,
+        },
+        body: JSON.stringify({
+          model: settings.model,
+          system: promptText,
+          messages: [
+            { role: "user", content: contextBlock + SINGLE_SHOT_DIRECTIVE },
+          ],
+          max_tokens: 16000,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok || !res.body) {
+        const text = await res.text();
+        let detail = text;
+        try {
+          const parsed = JSON.parse(text);
+          detail = parsed.error?.message || parsed.error || text;
+        } catch {
+          /* leave detail as raw text */
+        }
+        throw new Error(detail || `Request failed (${res.status})`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        setOutput((prev) => prev + chunk);
+      }
+    } catch (err) {
+      const e = err as Error;
+      if (e.name === "AbortError") return;
+      setAiError(e.message);
+    } finally {
+      setGenerating(false);
+      abortRef.current = null;
+    }
+  }
+
+  function stopGeneration() {
+    abortRef.current?.abort();
+  }
+
   if (!hydrated) return <p className="text-sm text-muted">Loading…</p>;
   if (!project) {
     return (
@@ -184,43 +279,113 @@ export function StepRunner({ projectId, step, promptText }: Props) {
         <section className="space-y-6">
           <header>
             <h2 className="font-display text-2xl tracking-tight">
-              1. Send this to your AI
+              {aiEligible
+                ? "1. Generate or send to your AI"
+                : "1. Send this to your AI"}
             </h2>
             <p className="mt-2 text-sm text-muted">
-              The full master prompt below already includes your idea and any earlier
-              outputs from this project as context.
+              {aiEligible
+                ? "Generate the artifact in-browser with your Anthropic key, or copy the prompt into another tool."
+                : "The full master prompt below already includes your idea and any earlier outputs from this project as context."}
             </p>
           </header>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => copy("prompt", fullPrompt)}
-              className="inline-flex items-center gap-2 rounded-md bg-fg px-4 py-2.5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5"
-            >
-              <span
-                aria-hidden
-                className={`inline-block h-1.5 w-1.5 rounded-full transition-colors ${
-                  copied === "prompt" ? "bg-bg" : "bg-bg/60"
-                }`}
-              />
-              {copied === "prompt" ? "Copied" : "Copy full prompt"}
-            </button>
-            <button
-              type="button"
-              onClick={openClaude}
-              className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong"
-            >
-              Copy & open Claude.ai
-            </button>
-            <button
-              type="button"
-              onClick={openChatGPT}
-              className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong"
-            >
-              Copy & open ChatGPT
-            </button>
-          </div>
+          {aiEligible ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {generating ? (
+                  <button
+                    type="button"
+                    onClick={stopGeneration}
+                    className="inline-flex items-center gap-2 rounded-md border border-fg bg-bg px-4 py-2.5 text-sm font-medium text-fg transition-transform hover:-translate-y-0.5"
+                  >
+                    <span
+                      aria-hidden
+                      className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-fg"
+                    />
+                    Stop generating
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={generateWithAI}
+                    className="inline-flex items-center gap-2 rounded-md bg-fg px-4 py-2.5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5"
+                  >
+                    <span aria-hidden>✦</span>
+                    {aiReady
+                      ? `Generate ${STEP_OUTPUT_LABEL[step.key]} with AI`
+                      : "Add API key to generate"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => copy("prompt", fullPrompt)}
+                  disabled={generating}
+                  className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {copied === "prompt" ? "Copied" : "Copy prompt"}
+                </button>
+                <button
+                  type="button"
+                  onClick={openClaude}
+                  disabled={generating}
+                  className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Open Claude.ai
+                </button>
+                <button
+                  type="button"
+                  onClick={openChatGPT}
+                  disabled={generating}
+                  className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Open ChatGPT
+                </button>
+              </div>
+              <p className="font-mono text-[0.65rem] uppercase tracking-wider text-subtle">
+                {generating
+                  ? `Streaming with ${settings.model}…`
+                  : aiReady
+                    ? `Will run as a single-shot with ${settings.model}.`
+                    : "AI generation requires an Anthropic API key."}
+              </p>
+              {aiError ? (
+                <p className="rounded-md border border-border-strong bg-surface px-3 py-2 font-mono text-xs text-fg">
+                  Error: {aiError}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => copy("prompt", fullPrompt)}
+                className="inline-flex items-center gap-2 rounded-md bg-fg px-4 py-2.5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5"
+              >
+                <span
+                  aria-hidden
+                  className={`inline-block h-1.5 w-1.5 rounded-full transition-colors ${
+                    copied === "prompt" ? "bg-bg" : "bg-bg/60"
+                  }`}
+                />
+                {copied === "prompt" ? "Copied" : "Copy full prompt"}
+              </button>
+              <button
+                type="button"
+                onClick={openClaude}
+                className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong"
+              >
+                Copy & open Claude.ai
+              </button>
+              <button
+                type="button"
+                onClick={openChatGPT}
+                className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong"
+              >
+                Copy & open ChatGPT
+              </button>
+            </div>
+          )}
 
           <details
             className="rounded-lg border border-border bg-surface/40"
@@ -260,11 +425,14 @@ export function StepRunner({ projectId, step, promptText }: Props) {
         <section className="space-y-6">
           <header>
             <h2 className="font-display text-2xl tracking-tight">
-              2. Paste the result here
+              {aiEligible
+                ? "2. Edit, then save"
+                : "2. Paste the result here"}
             </h2>
             <p className="mt-2 text-sm text-muted">
-              When the AI finishes, paste its final output below. We save it locally so
-              the next step can use it as context.
+              {aiEligible
+                ? "AI output streams in below. Edit before saving if anything needs adjusting, or paste your own output if you ran it elsewhere."
+                : "When the AI finishes, paste its final output below. We save it locally so the next step can use it as context."}
             </p>
           </header>
 
@@ -272,8 +440,14 @@ export function StepRunner({ projectId, step, promptText }: Props) {
             value={output}
             onChange={(e) => setOutput(e.target.value)}
             rows={18}
-            placeholder={`Paste your ${STEP_OUTPUT_LABEL[step.key]} output here…`}
-            className="block w-full resize-y rounded-md border border-border bg-bg px-4 py-3 font-mono text-sm leading-relaxed text-fg outline-none transition-colors focus:border-border-strong focus:ring-2 focus:ring-fg/10"
+            placeholder={
+              generating
+                ? "Streaming…"
+                : `Paste your ${STEP_OUTPUT_LABEL[step.key]} output here…`
+            }
+            className={`block w-full resize-y rounded-md border bg-bg px-4 py-3 font-mono text-sm leading-relaxed text-fg outline-none transition-colors focus:border-border-strong focus:ring-2 focus:ring-fg/10 ${
+              generating ? "border-fg/40" : "border-border"
+            }`}
           />
 
           <div className="flex flex-wrap items-center gap-3">
@@ -346,6 +520,8 @@ export function StepRunner({ projectId, step, promptText }: Props) {
           </Link>
         )}
       </nav>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
