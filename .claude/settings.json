@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(pnpm build *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\"; grep -c \"pnpm-store\" \"{}\" || true')",
+      "Bash(python3 -c ' *)"
     ],
     "additionalDirectories": [
       "/Users/renukakumar9030gmail.com/Work/code-smith/web/app/docs/[step]"
