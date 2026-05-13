@@ -8,7 +8,7 @@ import { STEPS } from "@/lib/steps";
 import type { StepKey } from "@/lib/steps";
 
 export function ProjectDashboard({ projectId }: { projectId: string }) {
-  const { projects, hydrated, rename, remove } = useProjects();
+  const { projects, hydrated, update, remove } = useProjects();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
@@ -28,7 +28,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
           It may have been deleted, or this browser doesn’t have it stored.
         </p>
         <Link
-          href="/start"
+          href="/playground"
           className="mt-7 inline-flex items-center gap-2 rounded-md border border-border px-5 py-3 text-sm hover:border-border-strong"
         >
           Back to projects
@@ -42,8 +42,8 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
   return (
     <div>
       <nav className="mb-8 font-mono text-xs uppercase tracking-wider text-subtle">
-        <Link href="/start" className="transition-colors hover:text-fg">
-          Walkthrough
+        <Link href="/playground" className="transition-colors hover:text-fg">
+          Playground
         </Link>
         <span className="mx-2 text-border-strong">/</span>
         <span className="text-fg">{project.name}</span>
@@ -56,7 +56,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (draftName.trim()) {
-                  rename(project.id, draftName.trim());
+                  update(project.id, { name: draftName.trim() });
                   setEditing(false);
                 }
               }}
@@ -82,7 +82,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
               {project.name}
             </h1>
           )}
-          <p className="mt-3 text-muted">{project.idea}</p>
+          <p className="mt-3 text-muted">{project.description}</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
@@ -100,13 +100,6 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
         {STEPS.map((step, i) => {
           const state = project.steps[step.key];
           const status = state?.status ?? "not-started";
-          const prev = STEPS[i - 1];
-          const locked =
-            !!prev &&
-            !prev.optional &&
-            (project.steps[prev.key]?.status ?? "not-started") !== "complete" &&
-            !step.optional;
-
           return (
             <li key={step.key}>
               <StepRow
@@ -117,7 +110,6 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
                 blurb={step.blurb}
                 optional={!!step.optional}
                 status={status}
-                locked={locked}
                 projectId={project.id}
               />
             </li>
@@ -135,7 +127,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
           onClick={() => {
             if (confirm(`Delete "${project.name}"? This can't be undone.`)) {
               remove(project.id);
-              router.push("/start");
+              router.push("/playground");
             }
           }}
           className="rounded-md border border-transparent px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-subtle transition-colors hover:border-border hover:text-fg"
@@ -155,7 +147,6 @@ function StepRow({
   blurb,
   optional,
   status,
-  locked,
   projectId,
 }: {
   index: number;
@@ -164,61 +155,62 @@ function StepRow({
   title: string;
   blurb: string;
   optional: boolean;
-  status: "not-started" | "in-progress" | "complete";
-  locked: boolean;
+  status: "not-started" | "complete";
   projectId: string;
 }) {
-  const href = `/start/${projectId}/${stepKey}` as const;
-  const inner = (
-    <div
-      className={[
-        "group flex items-center gap-5 rounded-lg border bg-bg px-5 py-5 transition-all",
-        locked
-          ? "cursor-not-allowed opacity-50"
-          : "hover:-translate-y-px hover:border-border-strong",
-        optional ? "border-dashed border-border-strong" : "border-border",
-      ].join(" ")}
-    >
-      <span className="hidden font-mono text-xs uppercase tracking-[0.2em] text-subtle md:inline">
-        {String(index + 1).padStart(2, "0")}
-      </span>
-      <StatusDot status={status} />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-3">
-          <span className="font-mono text-xs uppercase tracking-[0.18em] text-subtle">
-            Step {number}
-          </span>
-          <h2 className="font-display text-2xl tracking-tight">{title}</h2>
-          {optional ? (
-            <span className="rounded-sm border border-border px-1.5 py-px font-mono text-[0.6rem] uppercase tracking-wider text-subtle">
-              optional
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-1 line-clamp-1 text-sm text-muted">{blurb}</p>
-      </div>
-      <span className="font-mono text-xs uppercase tracking-wider text-subtle">
-        {status === "complete" ? "Done" : status === "in-progress" ? "In progress" : "Open"}
-      </span>
-      <span
-        aria-hidden
-        className="inline-block text-muted transition-transform group-hover:translate-x-1"
+  const href = `/playground/${projectId}/${stepKey}` as const;
+  return (
+    <Link href={href}>
+      <div
+        className={[
+          "group relative flex items-center gap-5 rounded-lg border px-5 py-5 transition-all hover:-translate-y-px hover:border-border-strong",
+          optional
+            ? "border-border-strong bg-fg/[0.035]"
+            : "border-border bg-bg",
+        ].join(" ")}
       >
-        →
-      </span>
-    </div>
+        {optional ? (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-1/2 h-10 w-[3px] -translate-y-1/2 rounded-r-sm bg-fg"
+          />
+        ) : null}
+        <span className="hidden font-mono text-xs uppercase tracking-[0.2em] text-subtle md:inline">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <StatusDot status={status} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-3">
+            <span className="font-mono text-xs uppercase tracking-[0.18em] text-subtle">
+              Step {number}
+            </span>
+            <h2 className="font-display text-2xl tracking-tight">{title}</h2>
+            {optional ? (
+              <span className="rounded-sm bg-fg px-2 py-0.5 font-mono text-[0.6rem] font-medium uppercase tracking-[0.18em] text-bg">
+                Optional
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-1 line-clamp-1 text-sm text-muted">{blurb}</p>
+        </div>
+        <span className="font-mono text-xs uppercase tracking-wider text-subtle">
+          {status === "complete" ? "Done" : "Open"}
+        </span>
+        <span
+          aria-hidden
+          className="inline-block text-muted transition-transform group-hover:translate-x-1"
+        >
+          →
+        </span>
+      </div>
+    </Link>
   );
-
-  if (locked) return inner;
-  return <Link href={href}>{inner}</Link>;
 }
 
-function StatusDot({ status }: { status: "not-started" | "in-progress" | "complete" }) {
+function StatusDot({ status }: { status: "not-started" | "complete" }) {
   const cls =
     status === "complete"
       ? "bg-fg"
-      : status === "in-progress"
-        ? "bg-fg/40 ring-2 ring-fg/40"
-        : "bg-transparent ring-1 ring-border-strong";
+      : "bg-transparent ring-1 ring-border-strong";
   return <span aria-hidden className={`inline-block h-2.5 w-2.5 rounded-full ${cls}`} />;
 }

@@ -25,11 +25,11 @@ export function ProjectList() {
           Start your first one.
         </h2>
         <p className="mx-auto mt-3 max-w-md text-sm text-muted">
-          A project tracks your progress through all six prompts. Outputs live in your
-          browser — nothing leaves this device.
+          A project tracks your progress through all six prompts. Everything lives in
+          your browser — nothing leaves this device.
         </p>
         <Link
-          href="/start/new"
+          href="/playground/new"
           className="mt-7 inline-flex items-center gap-2 rounded-md bg-fg px-5 py-3 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5"
         >
           New project →
@@ -44,14 +44,14 @@ export function ProjectList() {
         const progress = projectProgress(p, STEPS.length);
         return (
           <li key={p.id} className="group relative bg-bg p-6 transition-colors hover:bg-surface/50">
-            <Link href={`/start/${p.id}`} className="block">
+            <Link href={`/playground/${p.id}`} className="block">
               <div className="flex items-baseline justify-between gap-4">
                 <h3 className="font-display text-xl tracking-tight">{p.name}</h3>
                 <span className="font-mono text-[0.7rem] uppercase tracking-wider text-subtle">
                   {progress.done}/{progress.total}
                 </span>
               </div>
-              <p className="mt-2 line-clamp-2 text-sm text-muted">{p.idea}</p>
+              <p className="mt-2 line-clamp-2 text-sm text-muted">{p.description}</p>
               <div className="mt-4 flex items-center gap-3">
                 <ProgressBar percent={progress.percent} />
                 <span className="font-mono text-[0.65rem] uppercase tracking-wider text-subtle">

@@ -67,7 +67,7 @@ export function HeroIntro() {
         className="mt-10 flex flex-wrap items-center gap-4"
       >
         <Link
-          href="/start/new"
+          href="/playground/new"
           className="group inline-flex items-center gap-2 rounded-md bg-fg px-5 py-3 text-sm font-medium text-bg transition-transform duration-200 hover:-translate-y-0.5"
         >
           Start a project

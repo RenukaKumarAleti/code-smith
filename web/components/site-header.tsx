@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { SettingsTrigger } from "./settings-trigger";
 
 export function SiteHeader() {
   return (
@@ -20,17 +19,10 @@ export function SiteHeader() {
             Docs
           </Link>
           <Link
-            href="/skills"
-            className="text-muted transition-colors hover:text-fg"
-          >
-            Skills
-          </Link>
-          <SettingsTrigger />
-          <Link
-            href="/start"
+            href="/playground"
             className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-fg transition-colors hover:border-border-strong"
           >
-            Start walkthrough
+            Playground
             <span aria-hidden>→</span>
           </Link>
         </nav>

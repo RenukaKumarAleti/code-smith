@@ -6,18 +6,27 @@ export function StepCard({ step }: { step: Step }) {
     <Link
       href={`/docs/${step.key}`}
       className={[
-        "group flex h-full flex-col rounded-lg border bg-surface/30 p-6 transition-all duration-300",
-        "hover:-translate-y-0.5 hover:border-border-strong hover:bg-surface",
-        step.optional ? "border-dashed border-border-strong/70" : "border-border",
+        "group relative flex h-full flex-col rounded-lg border p-6 transition-all duration-300",
+        "hover:-translate-y-0.5 hover:border-border-strong",
+        step.optional
+          ? "border-border-strong bg-fg/[0.035] hover:bg-fg/[0.06]"
+          : "border-border bg-surface/30 hover:bg-surface",
       ].join(" ")}
     >
+      {step.optional ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-0 top-6 h-8 w-[3px] rounded-r-sm bg-fg"
+        />
+      ) : null}
+
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-mono text-xs uppercase tracking-[0.18em] text-subtle">
           Step {step.number}
         </span>
         {step.optional ? (
-          <span className="rounded-sm border border-border px-1.5 py-px font-mono text-[0.62rem] uppercase tracking-wider text-subtle">
-            optional
+          <span className="rounded-sm bg-fg px-2 py-0.5 font-mono text-[0.62rem] font-medium uppercase tracking-[0.18em] text-bg">
+            Optional
           </span>
         ) : null}
       </div>

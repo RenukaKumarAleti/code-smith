@@ -1,19 +1,65 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Project, StepState } from "./projects-types";
+import type { Project, StepState, StepStatus } from "./projects-types";
 import { STORAGE_KEY } from "./projects-types";
 import type { StepKey } from "./steps";
 
+const V1_KEY = "codesmith:projects:v1";
+
 function genId() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+type LegacyStepState = {
+  status?: string;
+  output?: string;
+  completedAt?: number;
+};
+
+type LegacyProject = {
+  id: string;
+  name: string;
+  idea?: string;
+  description?: string;
+  architecture?: string;
+  createdAt: number;
+  updatedAt: number;
+  steps?: Record<string, LegacyStepState>;
+};
+
+function migrateV1(raw: LegacyProject[]): Project[] {
+  return raw.map((p) => {
+    const steps: Project["steps"] = {};
+    for (const [k, v] of Object.entries(p.steps ?? {})) {
+      const status: StepStatus = v?.status === "complete" ? "complete" : "not-started";
+      steps[k as StepKey] = { status, completedAt: v?.completedAt };
+    }
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description ?? p.idea ?? "",
+      architecture: p.architecture,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      steps,
+    };
+  });
 }
 
 function readStore(): Project[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Project[]) : [];
+    if (raw) return JSON.parse(raw) as Project[];
+    // First-load migration: import legacy v1 projects if present.
+    const v1 = localStorage.getItem(V1_KEY);
+    if (v1) {
+      const migrated = migrateV1(JSON.parse(v1) as LegacyProject[]);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
+    return [];
   } catch {
     return [];
   }
@@ -23,10 +69,9 @@ function writeStore(list: Project[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    // Notify other tabs / hooks
     window.dispatchEvent(new CustomEvent("codesmith:projects-changed"));
   } catch {
-    // quota exceeded — silent
+    /* quota — silent */
   }
 }
 
@@ -47,57 +92,54 @@ export function useProjects() {
     };
   }, []);
 
-  const create = useCallback((name: string, idea: string): Project => {
+  const create = useCallback((name: string, description: string): Project => {
     const now = Date.now();
     const p: Project = {
       id: genId(),
       name,
-      idea,
+      description,
       createdAt: now,
       updatedAt: now,
       steps: {},
     };
-    setProjects((prev) => {
-      const next = [p, ...prev];
-      writeStore(next);
-      return next;
-    });
+    // Persist synchronously before returning so a follow-up navigation
+    // can read the new project from localStorage immediately.
+    const next = [p, ...readStore()];
+    writeStore(next);
+    setProjects(next);
     return p;
   }, []);
 
   const remove = useCallback((id: string) => {
-    setProjects((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      writeStore(next);
-      return next;
-    });
+    const next = readStore().filter((p) => p.id !== id);
+    writeStore(next);
+    setProjects(next);
   }, []);
 
-  const rename = useCallback((id: string, name: string) => {
-    setProjects((prev) => {
-      const next = prev.map((p) =>
-        p.id === id ? { ...p, name, updatedAt: Date.now() } : p,
+  const update = useCallback(
+    (id: string, patch: Partial<Pick<Project, "name" | "description" | "architecture">>) => {
+      const next = readStore().map((p) =>
+        p.id === id ? { ...p, ...patch, updatedAt: Date.now() } : p,
       );
       writeStore(next);
-      return next;
-    });
-  }, []);
+      setProjects(next);
+    },
+    [],
+  );
 
   const setStep = useCallback(
     (projectId: string, stepKey: StepKey, patch: Partial<StepState>) => {
-      setProjects((prev) => {
-        const next = prev.map((p) => {
-          if (p.id !== projectId) return p;
-          const current = p.steps[stepKey] ?? { status: "not-started" as const };
-          return {
-            ...p,
-            updatedAt: Date.now(),
-            steps: { ...p.steps, [stepKey]: { ...current, ...patch } },
-          };
-        });
-        writeStore(next);
-        return next;
+      const next = readStore().map((p) => {
+        if (p.id !== projectId) return p;
+        const current = p.steps[stepKey] ?? { status: "not-started" as const };
+        return {
+          ...p,
+          updatedAt: Date.now(),
+          steps: { ...p.steps, [stepKey]: { ...current, ...patch } },
+        };
       });
+      writeStore(next);
+      setProjects(next);
     },
     [],
   );
@@ -107,7 +149,7 @@ export function useProjects() {
     hydrated,
     create,
     remove,
-    rename,
+    update,
     setStep,
     get: (id: string) => projects.find((p) => p.id === id),
   };

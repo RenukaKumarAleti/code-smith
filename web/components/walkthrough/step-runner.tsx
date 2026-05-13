@@ -2,43 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useProjects } from "@/lib/use-projects";
-import { hasApiKey, useSettings } from "@/lib/use-settings";
-import { SettingsModal } from "@/components/settings-modal";
-import { STEPS, getStep, type Step, type StepKey } from "@/lib/steps";
-
-const STEP_OUTPUT_LABEL: Record<StepKey, string> = {
-  "prd-generator": "PRD",
-  architect: "ARCHITECTURE",
-  "design-spec": "DESIGN-SPEC",
-  "feature-spec": "FEATURE-SPEC",
-  "agent-workflows": "SESSION",
-  "code-evaluator": "AUDIT",
-};
-
-const STEP_DEPENDENCIES: Record<StepKey, StepKey[]> = {
-  "prd-generator": [],
-  architect: ["prd-generator"],
-  "design-spec": ["prd-generator", "architect"],
-  "feature-spec": ["prd-generator", "architect"],
-  "agent-workflows": ["architect"],
-  "code-evaluator": ["prd-generator", "architect", "feature-spec"],
-};
-
-// Steps for which a single-shot AI generation makes sense.
-// 3 (feature spec), 4 (workflows), 5 (evaluator) stay copy-paste.
-const AI_ELIGIBLE: StepKey[] = ["prd-generator", "architect", "design-spec"];
-
-// Appended to the user message so Claude generates the artifact in one
-// shot rather than starting the prompt's interactive Phase 0 Q&A.
-const SINGLE_SHOT_DIRECTIVE = `
-
----
-
-# Single-shot mode
-
-This run is a single-shot generation, not an interactive session. Generate the final artifact directly using the context above. If critical information is missing, make reasonable assumptions, mark them clearly with "Assumed:" prefixes inside an "Open Questions / Assumptions" section, and proceed. Skip Phase 0 questions.`;
+import { STEPS, type Step, type StepKey } from "@/lib/steps";
+import {
+  ArchitectureSelector,
+  getArchitecture,
+  type ArchitectureKey,
+} from "./architecture-selector";
 
 type Props = {
   projectId: string;
@@ -48,173 +19,87 @@ type Props = {
 
 export function StepRunner({ projectId, step, promptText }: Props) {
   const router = useRouter();
-  const { projects, hydrated, setStep } = useProjects();
-  const { settings, hydrated: settingsHydrated } = useSettings();
-  const [output, setOutput] = useState("");
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [copied, setCopied] = useState<"prompt" | "context" | null>(null);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
+  const { projects, hydrated, update, setStep } = useProjects();
 
   const project = projects.find((p) => p.id === projectId);
-  const aiEligible = AI_ELIGIBLE.includes(step.key);
-  const aiReady = settingsHydrated && hasApiKey(settings);
 
-  // Hydrate output from store
+  // Local draft for PRD step (editable name/description)
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [arch, setArch] = useState<ArchitectureKey>("modular-monolith");
+
   useEffect(() => {
     if (!hydrated || !project) return;
-    const existing = project.steps[step.key]?.output ?? "";
-    setOutput(existing);
-  }, [hydrated, project, step.key]);
+    setName(project.name);
+    setDescription(project.description);
+    setArch(((project.architecture as ArchitectureKey | undefined) ?? "modular-monolith"));
+  }, [hydrated, project]);
 
   const stepIndex = STEPS.findIndex((s) => s.key === step.key);
   const nextStep = STEPS[stepIndex + 1];
-
-  const dependencies = STEP_DEPENDENCIES[step.key];
-
-  const contextBlock = useMemo(() => {
-    if (!project) return "";
-    const sections: string[] = [];
-    if (step.key === "prd-generator") {
-      sections.push(`## My idea\n\n${project.idea}`);
-    } else {
-      sections.push(`## My idea\n\n${project.idea}`);
-      for (const dep of dependencies) {
-        const depOutput = project.steps[dep]?.output?.trim();
-        const depStep = getStep(dep);
-        if (depOutput && depStep) {
-          sections.push(
-            `## ${STEP_OUTPUT_LABEL[dep]} (from Step ${depStep.number})\n\n${depOutput}`,
-          );
-        }
-      }
-    }
-    return sections.join("\n\n---\n\n");
-  }, [project, step.key, dependencies]);
+  const prevStep = STEPS[stepIndex - 1];
 
   const fullPrompt = useMemo(() => {
-    if (!project) return promptText;
-    return `${promptText}\n\n---\n\n${contextBlock}`;
-  }, [promptText, contextBlock, project]);
+    const parts: string[] = [promptText.trim()];
+    const ctx: string[] = [];
+    ctx.push(`## Project name\n\n${name || "(not set)"}`);
+    ctx.push(`## Project description\n\n${description || "(not set)"}`);
+    if (step.key === "architect" || step.key === "design-spec" || step.key === "feature-spec" || step.key === "agent-workflows" || step.key === "code-evaluator") {
+      const a = getArchitecture(arch);
+      ctx.push(
+        `## Chosen architecture\n\n**${a.name}** — ${a.tagline}\n\n${a.description}`,
+      );
+    }
+    parts.push("---");
+    parts.push(...ctx);
+    return parts.join("\n\n");
+  }, [promptText, name, description, arch, step.key]);
 
-  function save({ markComplete }: { markComplete: boolean } = { markComplete: false }) {
-    if (!project) return;
-    setStep(project.id, step.key, {
-      status: markComplete ? "complete" : output.trim() ? "in-progress" : "not-started",
-      output: output,
-      completedAt: markComplete ? Date.now() : undefined,
-    });
-    setSavedAt(Date.now());
-    setTimeout(() => setSavedAt(null), 2200);
-  }
-
-  async function copy(kind: "prompt" | "context", text: string) {
+  async function copy() {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(kind);
-      setTimeout(() => setCopied(null), 1600);
+      await navigator.clipboard.writeText(fullPrompt);
     } catch {
       /* ignore */
     }
   }
 
-  function downloadMd() {
-    if (!output.trim()) return;
-    const filename = `${STEP_OUTPUT_LABEL[step.key]}.md`;
-    const blob = new Blob([output], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function openIn(url: string) {
+    await copy();
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
-  function openClaude() {
-    // Claude.ai URL-seeded conversations have a small payload limit.
-    // We open a blank new conversation and rely on the user pasting from clipboard.
-    copy("prompt", fullPrompt);
-    window.open("https://claude.ai/new", "_blank", "noopener,noreferrer");
+  function saveProjectField(field: "name" | "description") {
+    if (!project) return;
+    const value = field === "name" ? name.trim() : description.trim();
+    if (!value) return;
+    update(project.id, { [field]: value });
   }
 
-  function openChatGPT() {
-    copy("prompt", fullPrompt);
-    window.open("https://chatgpt.com/", "_blank", "noopener,noreferrer");
+  function saveArchitecture(next: ArchitectureKey) {
+    setArch(next);
+    if (project) update(project.id, { architecture: next });
   }
 
-  async function generateWithAI() {
-    if (!aiEligible) return;
-    if (!aiReady) {
-      setSettingsOpen(true);
-      return;
+  function markComplete() {
+    if (!project) return;
+    setStep(project.id, step.key, { status: "complete", completedAt: Date.now() });
+    if (nextStep) router.push(`/playground/${project.id}/${nextStep.key}`);
+    else router.push(`/playground/${project.id}`);
+  }
+
+  function markNotDone() {
+    if (!project) return;
+    setStep(project.id, step.key, { status: "not-started", completedAt: undefined });
+  }
+
+  function skipDesigner() {
+    if (!project) return;
+    // From architect: mark architect complete, jump past design-spec to feature-spec.
+    // From design-spec: just navigate to feature-spec (leave design-spec not-started).
+    if (step.key === "architect") {
+      setStep(project.id, "architect", { status: "complete", completedAt: Date.now() });
     }
-    const confirmReplace =
-      output.trim().length === 0 ||
-      confirm(
-        "This will replace the current output for this step with the AI-generated result. Continue?",
-      );
-    if (!confirmReplace) return;
-
-    setAiError(null);
-    setGenerating(true);
-    setOutput("");
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": settings.apiKey,
-        },
-        body: JSON.stringify({
-          model: settings.model,
-          system: promptText,
-          messages: [
-            { role: "user", content: contextBlock + SINGLE_SHOT_DIRECTIVE },
-          ],
-          max_tokens: 16000,
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok || !res.body) {
-        const text = await res.text();
-        let detail = text;
-        try {
-          const parsed = JSON.parse(text);
-          detail = parsed.error?.message || parsed.error || text;
-        } catch {
-          /* leave detail as raw text */
-        }
-        throw new Error(detail || `Request failed (${res.status})`);
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        setOutput((prev) => prev + chunk);
-      }
-    } catch (err) {
-      const e = err as Error;
-      if (e.name === "AbortError") return;
-      setAiError(e.message);
-    } finally {
-      setGenerating(false);
-      abortRef.current = null;
-    }
-  }
-
-  function stopGeneration() {
-    abortRef.current?.abort();
+    router.push(`/playground/${project.id}/feature-spec`);
   }
 
   if (!hydrated) return <p className="text-sm text-muted">Loading…</p>;
@@ -223,7 +108,7 @@ export function StepRunner({ projectId, step, promptText }: Props) {
       <div className="rounded-lg border border-dashed border-border-strong p-10 text-center">
         <p className="text-muted">Project not found in this browser.</p>
         <Link
-          href="/start"
+          href="/playground"
           className="mt-6 inline-flex rounded-md border border-border px-5 py-3 text-sm hover:border-border-strong"
         >
           Back to projects
@@ -233,272 +118,201 @@ export function StepRunner({ projectId, step, promptText }: Props) {
   }
 
   const stepStatus = project.steps[step.key]?.status ?? "not-started";
+  const isComplete = stepStatus === "complete";
+  const showSkipDesigner = step.key === "architect" || step.key === "design-spec";
 
   return (
     <div>
       <nav className="mb-8 font-mono text-xs uppercase tracking-wider text-subtle">
-        <Link href="/start" className="transition-colors hover:text-fg">
-          Walkthrough
+        <Link href="/playground" className="transition-colors hover:text-fg">
+          Playground
         </Link>
         <span className="mx-2 text-border-strong">/</span>
-        <Link href={`/start/${project.id}`} className="transition-colors hover:text-fg">
+        <Link
+          href={`/playground/${project.id}`}
+          className="transition-colors hover:text-fg"
+        >
           {project.name}
         </Link>
         <span className="mx-2 text-border-strong">/</span>
         <span className="text-fg">Step {step.number}</span>
       </nav>
 
-      <header className="mb-10 border-b border-border pb-10">
+      <header
+        className={[
+          "relative mb-10 rounded-lg border pb-8 pl-6 pr-6 pt-7",
+          step.optional
+            ? "border-border-strong bg-fg/[0.04]"
+            : "border-border bg-bg",
+        ].join(" ")}
+      >
+        {step.optional ? (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-6 h-12 w-[3px] rounded-r-sm bg-fg"
+          />
+        ) : null}
         <div className="flex flex-wrap items-baseline gap-3">
           <span className="font-mono text-xs uppercase tracking-[0.22em] text-subtle">
             Step {step.number}
           </span>
           {step.optional ? (
-            <span className="rounded-sm border border-border px-1.5 py-px font-mono text-[0.6rem] uppercase tracking-wider text-subtle">
-              optional
+            <span className="rounded-sm bg-fg px-2 py-0.5 font-mono text-[0.6rem] font-medium uppercase tracking-[0.18em] text-bg">
+              Optional
             </span>
           ) : null}
           <span
             className={`font-mono text-[0.65rem] uppercase tracking-wider ${
-              stepStatus === "complete"
-                ? "text-fg"
-                : stepStatus === "in-progress"
-                  ? "text-muted"
-                  : "text-subtle"
+              isComplete ? "text-fg" : "text-subtle"
             }`}
           >
-            · {stepStatus.replace("-", " ")}
+            · {isComplete ? "complete" : "not started"}
           </span>
         </div>
         <h1 className="mt-2 font-display text-5xl tracking-tight">{step.title}</h1>
-        <p className="mt-5 max-w-2xl text-muted">{step.blurb}</p>
+        <p className="mt-4 max-w-2xl text-muted">{step.blurb}</p>
+        {step.optional ? (
+          <p className="mt-4 max-w-2xl text-sm text-muted">
+            Skip this step if it doesn’t apply — the pipeline continues without it.
+          </p>
+        ) : null}
       </header>
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-        {/* Left: prompt prep */}
-        <section className="space-y-6">
+      <div className="grid grid-cols-1 gap-10">
+        {/* Step-specific inputs */}
+        {step.key === "prd-generator" ? (
+          <PrdInputs
+            name={name}
+            description={description}
+            onNameChange={setName}
+            onDescriptionChange={setDescription}
+            onNameBlur={() => saveProjectField("name")}
+            onDescriptionBlur={() => saveProjectField("description")}
+          />
+        ) : null}
+
+        {step.key === "architect" ? (
+          <section className="space-y-4">
+            <header>
+              <h2 className="font-display text-2xl tracking-tight">
+                1. Pick an architecture
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                The Architect prompt designs your blueprint around the style you choose.
+                Modular Monolith is the default for new products.
+              </p>
+            </header>
+            <ArchitectureSelector value={arch} onChange={saveArchitecture} />
+          </section>
+        ) : null}
+
+        {/* Copy prompt section — preview always expanded, GitHub-like copy button on top */}
+        <section className="space-y-4">
           <header>
             <h2 className="font-display text-2xl tracking-tight">
-              {aiEligible
-                ? "1. Generate or send to your AI"
-                : "1. Send this to your AI"}
+              {step.key === "prd-generator" || step.key === "architect" ? "2. " : ""}
+              Copy the prompt
             </h2>
             <p className="mt-2 text-sm text-muted">
-              {aiEligible
-                ? "Generate the artifact in-browser with your Anthropic key, or copy the prompt into another tool."
-                : "The full master prompt below already includes your idea and any earlier outputs from this project as context."}
+              The master prompt below already has your project name
+              {step.key === "architect" ||
+              step.key === "design-spec" ||
+              step.key === "feature-spec" ||
+              step.key === "agent-workflows" ||
+              step.key === "code-evaluator"
+                ? ", description, and chosen architecture"
+                : " and description"}{" "}
+              appended at the end. Copy it from the box below.
             </p>
           </header>
 
-          {aiEligible ? (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {generating ? (
-                  <button
-                    type="button"
-                    onClick={stopGeneration}
-                    className="inline-flex items-center gap-2 rounded-md border border-fg bg-bg px-4 py-2.5 text-sm font-medium text-fg transition-transform hover:-translate-y-0.5"
-                  >
-                    <span
-                      aria-hidden
-                      className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-fg"
-                    />
-                    Stop generating
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={generateWithAI}
-                    className="inline-flex items-center gap-2 rounded-md bg-fg px-4 py-2.5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5"
-                  >
-                    <span aria-hidden>✦</span>
-                    {aiReady
-                      ? `Generate ${STEP_OUTPUT_LABEL[step.key]} with AI`
-                      : "Add API key to generate"}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => copy("prompt", fullPrompt)}
-                  disabled={generating}
-                  className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {copied === "prompt" ? "Copied" : "Copy prompt"}
-                </button>
-                <button
-                  type="button"
-                  onClick={openClaude}
-                  disabled={generating}
-                  className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Open Claude.ai
-                </button>
-                <button
-                  type="button"
-                  onClick={openChatGPT}
-                  disabled={generating}
-                  className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Open ChatGPT
-                </button>
-              </div>
-              <p className="font-mono text-[0.65rem] uppercase tracking-wider text-subtle">
-                {generating
-                  ? `Streaming with ${settings.model}…`
-                  : aiReady
-                    ? `Will run as a single-shot with ${settings.model}.`
-                    : "AI generation requires an Anthropic API key."}
-              </p>
-              {aiError ? (
-                <p className="rounded-md border border-border-strong bg-surface px-3 py-2 font-mono text-xs text-fg">
-                  Error: {aiError}
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => copy("prompt", fullPrompt)}
-                className="inline-flex items-center gap-2 rounded-md bg-fg px-4 py-2.5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5"
-              >
-                <span
-                  aria-hidden
-                  className={`inline-block h-1.5 w-1.5 rounded-full transition-colors ${
-                    copied === "prompt" ? "bg-bg" : "bg-bg/60"
-                  }`}
-                />
-                {copied === "prompt" ? "Copied" : "Copy full prompt"}
-              </button>
-              <button
-                type="button"
-                onClick={openClaude}
-                className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong"
-              >
-                Copy & open Claude.ai
-              </button>
-              <button
-                type="button"
-                onClick={openChatGPT}
-                className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong"
-              >
-                Copy & open ChatGPT
-              </button>
-            </div>
-          )}
-
-          <details
-            className="rounded-lg border border-border bg-surface/40"
-            open={showPrompt}
-            onToggle={(e) => setShowPrompt((e.target as HTMLDetailsElement).open)}
-          >
-            <summary className="cursor-pointer list-none px-4 py-3 font-mono text-xs uppercase tracking-wider text-muted hover:text-fg">
-              {showPrompt ? "Hide" : "Preview"} full prompt ({fullPrompt.length.toLocaleString()} chars)
-            </summary>
-            <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap break-words border-t border-border bg-bg p-4 font-mono text-[0.78rem] leading-relaxed text-fg">
-              {fullPrompt}
-            </pre>
-          </details>
-
-          {contextBlock && step.key !== "prd-generator" ? (
-            <div className="rounded-lg border border-dashed border-border-strong p-4">
-              <p className="font-mono text-[0.65rem] uppercase tracking-wider text-subtle">
-                Context auto-attached
-              </p>
-              <ul className="mt-2 text-sm text-muted">
-                <li>· Your one-line idea</li>
-                {dependencies.map((dep) => {
-                  const has = project.steps[dep]?.output?.trim();
-                  return (
-                    <li key={dep} className={has ? "" : "text-subtle"}>
-                      · {STEP_OUTPUT_LABEL[dep]} from Step {getStep(dep)?.number}{" "}
-                      {has ? "✓" : "(not yet completed)"}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ) : null}
+          <PromptPreview text={fullPrompt} />
         </section>
 
-        {/* Right: paste output */}
-        <section className="space-y-6">
+        {/* How to use */}
+        <section className="space-y-4">
           <header>
             <h2 className="font-display text-2xl tracking-tight">
-              {aiEligible
-                ? "2. Edit, then save"
-                : "2. Paste the result here"}
+              {step.key === "prd-generator" || step.key === "architect" ? "3. " : ""}
+              How to use
             </h2>
             <p className="mt-2 text-sm text-muted">
-              {aiEligible
-                ? "AI output streams in below. Edit before saving if anything needs adjusting, or paste your own output if you ran it elsewhere."
-                : "When the AI finishes, paste its final output below. We save it locally so the next step can use it as context."}
+              Walk through these in order. Tick them off as you go.
             </p>
           </header>
-
-          <textarea
-            value={output}
-            onChange={(e) => setOutput(e.target.value)}
-            rows={18}
-            placeholder={
-              generating
-                ? "Streaming…"
-                : `Paste your ${STEP_OUTPUT_LABEL[step.key]} output here…`
-            }
-            className={`block w-full resize-y rounded-md border bg-bg px-4 py-3 font-mono text-sm leading-relaxed text-fg outline-none transition-colors focus:border-border-strong focus:ring-2 focus:ring-fg/10 ${
-              generating ? "border-fg/40" : "border-border"
-            }`}
+          <HowToUseChecklist
+            stepKey={step.key}
+            onOpenClaude={() => openIn("https://claude.ai/new")}
+            onOpenChatGPT={() => openIn("https://chatgpt.com/")}
+            onCopy={copy}
           />
+        </section>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => save({ markComplete: false })}
-              disabled={!output.trim()}
-              className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Save draft
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                save({ markComplete: true });
-                if (nextStep) router.push(`/start/${project.id}/${nextStep.key}`);
-                else router.push(`/start/${project.id}`);
-              }}
-              disabled={!output.trim()}
-              className="inline-flex items-center gap-2 rounded-md bg-fg px-4 py-2.5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
-            >
-              Mark complete{nextStep ? " & continue →" : " ✓"}
-            </button>
-            <button
-              type="button"
-              onClick={downloadMd}
-              disabled={!output.trim()}
-              className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Download .md
-            </button>
-            {savedAt ? (
-              <span className="font-mono text-[0.65rem] uppercase tracking-wider text-subtle">
-                Saved
+        {/* Mark complete / Skip designer */}
+        <section className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
+          {isComplete ? (
+            <>
+              <span className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2.5 text-sm">
+                <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-fg" />
+                Marked complete
               </span>
-            ) : null}
-          </div>
+              <button
+                type="button"
+                onClick={markNotDone}
+                className="text-sm text-muted underline-offset-4 hover:underline"
+              >
+                Mark as not done
+              </button>
+              {nextStep ? (
+                <Link
+                  href={`/playground/${project.id}/${nextStep.key}`}
+                  className="ml-auto inline-flex items-center gap-2 rounded-md bg-fg px-4 py-2.5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5"
+                >
+                  Continue to Step {nextStep.number} →
+                </Link>
+              ) : (
+                <Link
+                  href={`/playground/${project.id}`}
+                  className="ml-auto inline-flex items-center gap-2 rounded-md bg-fg px-4 py-2.5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5"
+                >
+                  Back to project ✓
+                </Link>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={markComplete}
+                className="inline-flex items-center gap-2 rounded-md border border-fg px-4 py-2.5 text-sm font-medium text-fg transition-colors hover:bg-fg hover:text-bg"
+              >
+                {nextStep ? "Mark complete & continue →" : "Mark complete ✓"}
+              </button>
+              {showSkipDesigner ? (
+                <button
+                  type="button"
+                  onClick={skipDesigner}
+                  className="text-sm text-muted underline-offset-4 hover:text-fg hover:underline"
+                >
+                  Skip designer step →
+                </button>
+              ) : null}
+            </>
+          )}
         </section>
       </div>
 
       <nav className="mt-16 flex items-center justify-between border-t border-border pt-6 text-sm">
-        {stepIndex > 0 ? (
+        {prevStep ? (
           <Link
-            href={`/start/${project.id}/${STEPS[stepIndex - 1].key}`}
+            href={`/playground/${project.id}/${prevStep.key}`}
             className="text-muted transition-colors hover:text-fg"
           >
-            ← Step {STEPS[stepIndex - 1].number} {STEPS[stepIndex - 1].title}
+            ← Step {prevStep.number} {prevStep.title}
           </Link>
         ) : (
           <Link
-            href={`/start/${project.id}`}
+            href={`/playground/${project.id}`}
             className="text-muted transition-colors hover:text-fg"
           >
             ← Project dashboard
@@ -506,22 +320,382 @@ export function StepRunner({ projectId, step, promptText }: Props) {
         )}
         {nextStep ? (
           <Link
-            href={`/start/${project.id}/${nextStep.key}`}
+            href={`/playground/${project.id}/${nextStep.key}`}
             className="text-muted transition-colors hover:text-fg"
           >
             Step {nextStep.number} {nextStep.title} →
           </Link>
         ) : (
           <Link
-            href={`/start/${project.id}`}
+            href={`/playground/${project.id}`}
             className="text-muted transition-colors hover:text-fg"
           >
             Project dashboard →
           </Link>
         )}
       </nav>
-
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
+
+function PrdInputs({
+  name,
+  description,
+  onNameChange,
+  onDescriptionChange,
+  onNameBlur,
+  onDescriptionBlur,
+}: {
+  name: string;
+  description: string;
+  onNameChange: (v: string) => void;
+  onDescriptionChange: (v: string) => void;
+  onNameBlur: () => void;
+  onDescriptionBlur: () => void;
+}) {
+  return (
+    <section className="space-y-6">
+      <header>
+        <h2 className="font-display text-2xl tracking-tight">
+          1. Confirm your project details
+        </h2>
+        <p className="mt-2 text-sm text-muted">
+          The PRD prompt uses these as its starting context. Edit them here and they’ll
+          save back to your project.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[260px_1fr]">
+        <label className="block">
+          <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-subtle">
+            Project name
+          </span>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            onBlur={onNameBlur}
+            maxLength={80}
+            className="mt-2 block w-full rounded-md border border-border bg-bg px-4 py-3 text-base text-fg outline-none transition-colors focus:border-border-strong focus:ring-2 focus:ring-fg/10"
+          />
+        </label>
+        <label className="block">
+          <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-subtle">
+            Description
+          </span>
+          <textarea
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            onBlur={onDescriptionBlur}
+            rows={4}
+            maxLength={1000}
+            className="mt-2 block w-full resize-y rounded-md border border-border bg-bg px-4 py-3 text-base text-fg outline-none transition-colors focus:border-border-strong focus:ring-2 focus:ring-fg/10"
+          />
+          <span className="mt-1 block font-mono text-[0.6rem] uppercase tracking-wider text-subtle">
+            {description.length} / 1000
+          </span>
+        </label>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------- Prompt preview (always expanded, GH-style copy) -------------------- */
+
+function PromptPreview({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-bg">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-surface/60 px-4 py-2">
+        <span className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-subtle">
+          Prompt · {text.length.toLocaleString()} chars
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label="Copy prompt"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg px-2.5 py-1 font-mono text-[0.65rem] uppercase tracking-wider text-muted transition-colors hover:border-border-strong hover:text-fg"
+        >
+          <CopyIcon />
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="max-h-[480px] overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-[0.78rem] leading-relaxed text-fg">
+        {text}
+      </pre>
+    </div>
+  );
+}
+
+/* -------------------- How to use checklist -------------------- */
+
+type HowToAction =
+  | { kind: "open-claude" }
+  | { kind: "open-chatgpt" }
+  | { kind: "copy" };
+
+type HowToItem = {
+  title: string;
+  description: string;
+  action?: HowToAction;
+};
+
+const HOW_TO_BY_STEP: Record<StepKey, HowToItem[]> = {
+  "prd-generator": [
+    {
+      title: "Open a fresh Claude.ai or ChatGPT chat",
+      description:
+        "Start a new conversation so the prompt sets the system context cleanly. Either Claude or ChatGPT works — use whichever you have access to.",
+      action: { kind: "open-claude" },
+    },
+    {
+      title: "Paste the full prompt as your first message",
+      description:
+        "Paste it verbatim. The prompt already includes your project name and description at the bottom, so the AI knows what to ask about.",
+      action: { kind: "copy" },
+    },
+    {
+      title: "Answer the batched Q&A across 7 areas",
+      description:
+        "The AI will ask grouped questions — vision, users, scope, success metrics, constraints, risks, MVP cut. Take the full 20–40 minutes; this is the single biggest leverage point in the whole pipeline.",
+    },
+    {
+      title: "Save the final output as PRD.md in your repo",
+      description:
+        "When the AI emits the 16-section PRD, save it to /docs/PRD.md (or your repo root). Every later step reads this file first.",
+    },
+  ],
+  architect: [
+    {
+      title: "Open a fresh Claude.ai or ChatGPT chat",
+      description:
+        "Use a new conversation so the Architect prompt isn't biased by earlier context.",
+      action: { kind: "open-claude" },
+    },
+    {
+      title: "Paste the full prompt as your first message",
+      description:
+        "It already includes your project name, description, and the architecture style you picked above.",
+      action: { kind: "copy" },
+    },
+    {
+      title: "Attach or paste your PRD.md when asked",
+      description:
+        "The Architect needs the PRD to design the blueprint. Either attach it as a file or paste its contents when prompted.",
+    },
+    {
+      title: "Answer the architecture Q&A (15–30 min)",
+      description:
+        "Tech stack choices, data model, module boundaries, deployment, security. Be opinionated — the SSOT this produces is what every later prompt reads.",
+    },
+    {
+      title: "Save the output as ARCHITECTURE.md (with the SSOT block)",
+      description:
+        "Save to /docs/ARCHITECTURE.md. The SSOT block at the top is the source-of-truth every later session pastes in.",
+    },
+  ],
+  "design-spec": [
+    {
+      title: "Open a fresh Claude.ai or ChatGPT chat",
+      description:
+        "Designers tend to work better in Claude; use whichever you prefer.",
+      action: { kind: "open-claude" },
+    },
+    {
+      title: "Paste the full prompt as your first message",
+      description:
+        "The prompt picks up the architecture and description automatically.",
+      action: { kind: "copy" },
+    },
+    {
+      title: "Attach Figma links or screenshots if you have them",
+      description:
+        "Optional. If you already have visual references — Figma frames, mood boards, competitor screenshots — paste them when asked and the prompt will reverse-engineer tokens and components.",
+    },
+    {
+      title: "Save the output as DESIGN-SPEC.md",
+      description:
+        "Save to /docs/DESIGN-SPEC.md. Includes tokens, components, wireframes, motion, and a11y rules.",
+    },
+  ],
+  "feature-spec": [
+    {
+      title: "Open your IDE alongside your AI coding assistant",
+      description:
+        "Cursor, Claude Code, Windsurf, or Copilot Chat all work. You'll be running this prompt inside the IDE so the assistant sees your repo.",
+    },
+    {
+      title: "Paste the full prompt and provide the feature ID",
+      description:
+        "Tell the AI which feature you're scoping (e.g. F-12 from your PRD). It'll ask for the slice of PRD + SSOT it needs.",
+      action: { kind: "copy" },
+    },
+    {
+      title: "Walk through every endpoint, state, and edge case",
+      description:
+        "The prompt drives this — don't skip the edge-case section. Binary acceptance criteria are what make this spec useful for testing later.",
+    },
+    {
+      title: "Save under /docs/specs/FEATURE-SPEC-[F-ID].md",
+      description:
+        "One file per complex feature. Re-run this step for each one — don't try to spec everything at once.",
+    },
+  ],
+  "agent-workflows": [
+    {
+      title: "Open your IDE and load the workflow as your session prompt",
+      description:
+        "This is a daily-driver prompt — load it once at the start of each coding session in your AI coding tool.",
+    },
+    {
+      title: "Paste the full prompt so the 8 specialists are primed",
+      description:
+        "PM, Architect, Dev, QA, Code Enforcer, Tech Debt, Security, Docs. The prompt rotates between them based on what you're working on.",
+      action: { kind: "copy" },
+    },
+    {
+      title: "Hand it your active spec + last session's PROGRESS.md",
+      description:
+        "It needs the SSOT, the feature spec you're implementing, and the running PROGRESS.md so it can pick up where you left off.",
+    },
+    {
+      title: "Commit updated PROGRESS.md and CHANGELOG.md each session",
+      description:
+        "The workflow writes both files. Treat them like build artifacts — commit them so the next session has the latest memory.",
+    },
+  ],
+  "code-evaluator": [
+    {
+      title: "Open your IDE on the branch you want to audit",
+      description:
+        "Run this before launch, before a major release, or any time you want a third-party read on the codebase.",
+    },
+    {
+      title: "Paste the full prompt and feed it the inputs",
+      description:
+        "The evaluator needs your PRD, feature specs, and the relevant code. Point your AI tool at the repo and let it crawl.",
+      action: { kind: "copy" },
+    },
+    {
+      title: "Review the scored audit across 7 dimensions",
+      description:
+        "Correctness, architecture, security, performance, tests, docs, maintainability. Each gets a grade A–F with evidence.",
+    },
+    {
+      title: "Work the prioritised fix list",
+      description:
+        "Fixes come ranked by severity × effort. Start at the top and re-run the evaluator when you've cleared the high-priority items.",
+    },
+  ],
+};
+
+function HowToUseChecklist({
+  stepKey,
+  onOpenClaude,
+  onOpenChatGPT,
+  onCopy,
+}: {
+  stepKey: StepKey;
+  onOpenClaude: () => void;
+  onOpenChatGPT: () => void;
+  onCopy: () => void;
+}) {
+  const items = HOW_TO_BY_STEP[stepKey];
+  const [openInfo, setOpenInfo] = useState<number | null>(null);
+
+  function toggleInfo(i: number) {
+    setOpenInfo((prev) => (prev === i ? null : i));
+  }
+
+  function runAction(action: HowToAction) {
+    if (action.kind === "open-claude") onOpenClaude();
+    else if (action.kind === "open-chatgpt") onOpenChatGPT();
+    else if (action.kind === "copy") onCopy();
+  }
+
+  return (
+    <ol className="space-y-2">
+      {items.map((item, i) => {
+        const isOpen = openInfo === i;
+        return (
+          <li
+            key={i}
+            className="rounded-md border border-border bg-bg transition-colors hover:border-border-strong"
+          >
+            <div className="flex items-start gap-3 px-4 py-3">
+              <span
+                aria-hidden
+                className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border border-border-strong bg-bg"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-fg">{item.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleInfo(i)}
+                    aria-label={isOpen ? "Hide details" : "Show details"}
+                    aria-expanded={isOpen}
+                    className={[
+                      "inline-grid h-4 w-4 place-items-center rounded-full border text-[0.55rem] font-semibold transition-colors",
+                      isOpen
+                        ? "border-fg bg-fg text-bg"
+                        : "border-border-strong text-muted hover:border-fg hover:text-fg",
+                    ].join(" ")}
+                  >
+                    i
+                  </button>
+                </div>
+              </div>
+              {item.action ? (
+                <button
+                  type="button"
+                  onClick={() => runAction(item.action!)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-bg px-3 py-1.5 font-mono text-[0.65rem] uppercase tracking-wider text-muted transition-colors hover:border-border-strong hover:text-fg"
+                >
+                  {actionLabel(item.action)}
+                </button>
+              ) : null}
+            </div>
+            {isOpen ? (
+              <div className="border-t border-dashed border-border px-4 py-3 pl-12 text-sm text-muted">
+                {item.description}
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function actionLabel(action: HowToAction) {
+  switch (action.kind) {
+    case "open-claude":
+      return "Open Claude ↗";
+    case "open-chatgpt":
+      return "Open ChatGPT ↗";
+    case "copy":
+      return "Copy prompt";
+  }
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" aria-hidden>
+      <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z" />
+      <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
+    </svg>
+  );
+}
+
