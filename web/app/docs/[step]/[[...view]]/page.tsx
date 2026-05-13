@@ -5,13 +5,33 @@ import { loadDoc, type DocFile } from "@/lib/docs";
 import { CopyButton } from "@/components/copy-button";
 import { CodeBlockEnhancer } from "@/components/code-block-enhancer";
 
+export const dynamicParams = false;
+
+const VIEWS: { id: DocFile; slug: string; label: string }[] = [
+  { id: "howToUse", slug: "how-to-use", label: "How to use" },
+  { id: "prompt", slug: "prompt", label: "Prompt" },
+  { id: "example", slug: "example", label: "Example" },
+];
+
+const SLUG_TO_VIEW: Record<string, DocFile> = Object.fromEntries(
+  VIEWS.map((v) => [v.slug, v.id])
+);
+
 export async function generateStaticParams() {
-  return STEPS.map((s) => ({ step: s.key }));
+  const params: { step: string; view?: string[] }[] = [];
+  for (const step of STEPS) {
+    const available = VIEWS.filter((v) => Boolean(step.files[v.id]));
+    if (available.length === 0) continue;
+    params.push({ step: step.key });
+    for (const v of available) {
+      params.push({ step: step.key, view: [v.slug] });
+    }
+  }
+  return params;
 }
 
 type Props = {
-  params: Promise<{ step: string }>;
-  searchParams: Promise<{ view?: string }>;
+  params: Promise<{ step: string; view?: string[] }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,21 +44,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-const VIEWS: { id: DocFile; label: string }[] = [
-  { id: "howToUse", label: "How to use" },
-  { id: "prompt", label: "Prompt" },
-  { id: "example", label: "Example" },
-];
-
-export default async function StepPage({ params, searchParams }: Props) {
-  const { step: key } = await params;
-  const { view } = await searchParams;
+export default async function StepPage({ params }: Props) {
+  const { step: key, view } = await params;
   const step = getStep(key);
   if (!step) notFound();
 
   const available = VIEWS.filter((v) => Boolean(step.files[v.id]));
-  const activeView = (available.find((v) => v.id === view) ?? available[0])?.id;
-  if (!activeView) notFound();
+  if (available.length === 0) notFound();
+
+  const viewSlug = view?.[0];
+  let activeView: DocFile;
+  if (viewSlug) {
+    const mapped = SLUG_TO_VIEW[viewSlug];
+    if (!mapped || !step.files[mapped]) notFound();
+    activeView = mapped;
+  } else {
+    activeView = available[0].id;
+  }
 
   const doc = await loadDoc(step, activeView);
   if (!doc) notFound();
@@ -85,12 +107,10 @@ export default async function StepPage({ params, searchParams }: Props) {
         className="mb-8 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4"
       >
         <ul className="flex flex-wrap items-center gap-1">
-          {available.map((v) => {
+          {available.map((v, i) => {
             const active = v.id === activeView;
             const href =
-              v.id === available[0].id
-                ? `/docs/${step.key}`
-                : `/docs/${step.key}?view=${v.id}`;
+              i === 0 ? `/docs/${step.key}` : `/docs/${step.key}/${v.slug}`;
             return (
               <li key={v.id}>
                 <a

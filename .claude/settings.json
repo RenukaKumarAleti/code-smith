@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm build *)",
+      "Bash(node -e ' *)"
+    ],
+    "additionalDirectories": [
+      "/Users/renukakumar9030gmail.com/Work/code-smith/web/app/docs/[step]"
+    ]
+  }
+}

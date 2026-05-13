@@ -24,7 +24,7 @@ export function DocsSidebar() {
         </li>
         {STEPS.map((step) => {
           const href = `/docs/${step.key}` as const;
-          const active = pathname === href;
+          const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <li key={step.key}>
               <Link href={href} className={navItemClass(active)}>
