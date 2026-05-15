@@ -18,11 +18,11 @@ const SLUG_TO_VIEW: Record<string, DocFile> = Object.fromEntries(
 );
 
 export async function generateStaticParams() {
-  const params: { step: string; view?: string[] }[] = [];
+  const params: { step: string; view: string[] }[] = [];
   for (const step of STEPS) {
     const available = VIEWS.filter((v) => Boolean(step.files[v.id]));
     if (available.length === 0) continue;
-    params.push({ step: step.key });
+    params.push({ step: step.key, view: [] });
     for (const v of available) {
       params.push({ step: step.key, view: [v.slug] });
     }
